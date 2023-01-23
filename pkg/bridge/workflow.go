@@ -165,6 +165,37 @@ func Run(plumbCtx, actorCtx context.Context, plumbingCancel context.CancelFunc) 
 		return nil
 	})
 
+	jobsPaid := make(chan ContractPaidEvent, 1)
+	defer close(jobsPaid)
+
+	jobsFailedToPay := make(chan BacalhauJobCompletedEvent, 256)
+	defer close(jobsFailedToPay)
+
+	actors.Go(func() error {
+		ErrorActor(
+			log.Ctx(actorCtx).With().Str("action", "Payment").Int("instance", 0).Logger().WithContext(actorCtx),
+			log.Ctx(plumbCtx).With().Str("action", "Payment").Int("instance", 0).Logger().WithContext(plumbCtx),
+			jobsCompleted,
+			smartContract.Complete,
+			jobsPaid,
+			jobsFailedToPay,
+		)
+		return nil
+	})
+
+	jobsPaidSaved := make(chan ContractPaidEvent, 256)
+	defer close(jobsPaidSaved)
+
+	plumbing.Go(func() error {
+		Persist(plumbCtx, jobsPaid, jobsPaidSaved)
+		return nil
+	})
+
+	plumbing.Go(func() error {
+		Discard(plumbCtx, jobsPaidSaved)
+		return nil
+	})
+
 	log.Ctx(actorCtx).Info().Msg("Ready")
 	defer log.Ctx(actorCtx).Info().Msg("Shutdown")
 
