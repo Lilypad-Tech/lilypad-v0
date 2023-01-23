@@ -74,19 +74,22 @@ func (runner *xRunner) FindCompleted(ctx context.Context, jobs []BacalhauJobRunn
 			}
 
 			totalShards := job.GetJobTotalExecutionCount(bacjob)
+			jobStillRunning := job.WaitForTerminalStates(totalShards)
 			jobHasErrors := job.WaitThrowErrors([]model.JobStateType{model.JobStateError})
 			jobComplete := job.WaitForJobStates(map[model.JobStateType]int{
 				model.JobStateCompleted: totalShards,
 			})
 
-			if ok, err := jobHasErrors(bacjob.Status.State); !ok || err != nil {
-				log.Ctx(ctx).Info().Err(err).Msg("Bacalhau job failed")
-				failed = append(failed, j.Failed())
+			if ok, err := jobStillRunning(bacjob.Status.State); !ok || err != nil {
+				log.Ctx(ctx).Debug().Err(err).Msg("Bacalhau job still in progress")
 			} else if ok, err := jobComplete(bacjob.Status.State); ok && err == nil {
 				log.Ctx(ctx).Info().Err(err).Msg("Bacalhau job completed")
 				completed = append(completed, j.Completed())
+			} else if ok, err := jobHasErrors(bacjob.Status.State); !ok || err != nil {
+				log.Ctx(ctx).Info().Err(err).Msg("Bacalhau job failed")
+				failed = append(failed, j.Failed())
 			} else {
-				log.Ctx(ctx).Debug().Msg("Bacalhau job still in progress")
+				log.Ctx(ctx).Warn().Msg("Bacalhau job in unknown state")
 			}
 
 			break
