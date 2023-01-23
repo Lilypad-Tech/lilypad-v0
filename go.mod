@@ -8,6 +8,7 @@ require (
 	github.com/google/uuid v1.3.0
 	github.com/pkg/errors v0.9.1
 	github.com/rs/zerolog v1.28.0
+	github.com/stretchr/testify v1.8.1
 	go.ptx.dk/multierrgroup v0.0.2
 	go.uber.org/multierr v1.9.0
 )
@@ -253,7 +254,6 @@ require (
 	github.com/spf13/jwalterweatherman v1.1.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/spf13/viper v1.15.0 // indirect
-	github.com/stretchr/testify v1.8.1 // indirect
 	github.com/subosito/gotenv v1.4.2 // indirect
 	github.com/swaggo/files v0.0.0-20220610200504-28940afbdbfe // indirect
 	github.com/swaggo/http-swagger v1.3.3 // indirect

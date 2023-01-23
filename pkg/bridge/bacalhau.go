@@ -111,3 +111,55 @@ func NewJobRunner() JobRunner {
 	client := publicapi.NewAPIClient(fmt.Sprintf("http://%s:%d", apiHost, apiPort))
 	return &xRunner{Client: client}
 }
+
+type RunnerCreateHandler func(context.Context, ContractSubmittedEvent) (BacalhauJobRunningEvent, error)
+type RunnerFindCompletedHandler func(context.Context, []BacalhauJobRunningEvent) ([]BacalhauJobCompletedEvent, []BacalhauJobFailedEvent)
+
+var SuccessfulCreate RunnerCreateHandler = func(ctx context.Context, cse ContractSubmittedEvent) (BacalhauJobRunningEvent, error) {
+	return cse.JobCreated(model.NewJob()), nil
+}
+
+var ErrorCreate RunnerCreateHandler = func(ctx context.Context, cse ContractSubmittedEvent) (BacalhauJobRunningEvent, error) {
+	return nil, errors.New("error creating job")
+}
+
+var SuccssfulFind RunnerFindCompletedHandler = func(ctx context.Context, jobs []BacalhauJobRunningEvent) ([]BacalhauJobCompletedEvent, []BacalhauJobFailedEvent) {
+	completed := []BacalhauJobCompletedEvent{}
+	for _, job := range jobs {
+		completed = append(completed, job.(BacalhauJobCompletedEvent))
+	}
+	return completed, nil
+}
+
+var FailedFind RunnerFindCompletedHandler = func(ctx context.Context, jobs []BacalhauJobRunningEvent) ([]BacalhauJobCompletedEvent, []BacalhauJobFailedEvent) {
+	failed := []BacalhauJobFailedEvent{}
+	for _, job := range jobs {
+		failed = append(failed, job.(BacalhauJobFailedEvent))
+	}
+	return nil, failed
+}
+
+type mockRunner struct {
+	CreateHandler        RunnerCreateHandler
+	FindCompletedHandler RunnerFindCompletedHandler
+}
+
+// Create implements JobRunner
+func (mock *mockRunner) Create(ctx context.Context, job ContractSubmittedEvent) (BacalhauJobRunningEvent, error) {
+	if mock.CreateHandler != nil {
+		return mock.CreateHandler(ctx, job)
+	} else {
+		return SuccessfulCreate(ctx, job)
+	}
+}
+
+// FindCompleted implements JobRunner
+func (mock *mockRunner) FindCompleted(ctx context.Context, jobs []BacalhauJobRunningEvent) ([]BacalhauJobCompletedEvent, []BacalhauJobFailedEvent) {
+	if mock.FindCompletedHandler != nil {
+		return mock.FindCompletedHandler(ctx, jobs)
+	} else {
+		return SuccssfulFind(ctx, jobs)
+	}
+}
+
+var _ JobRunner = (*mockRunner)(nil)

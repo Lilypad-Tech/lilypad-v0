@@ -20,7 +20,12 @@ func main() {
 	defer gracefulCancel()
 	defer immediateCancel()
 
-	err := bridge.Run(immediateStop, gracefulStop, immediateCancel)
+	workflow := bridge.Workflow{
+		Bacalhau: bridge.NewJobRunner(),
+		Contract: bridge.TimerContract(),
+	}
+
+	err := workflow.Run(immediateStop, gracefulStop, immediateCancel)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err.Error())
 	}

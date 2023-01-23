@@ -10,17 +10,19 @@ import (
 	"go.uber.org/multierr"
 )
 
-func Run(plumbCtx, actorCtx context.Context, plumbingCancel context.CancelFunc) (err error) {
-	var actors, plumbing multierrgroup.Group
+type Workflow struct {
+	Bacalhau JobRunner
+	Contract SmartContract
+}
 
-	jobRunner := NewJobRunner()
-	smartContract := MockContract()
+func (workflow *Workflow) Run(plumbCtx, actorCtx context.Context, plumbingCancel context.CancelFunc) (err error) {
+	var actors, plumbing multierrgroup.Group
 
 	jobRequests := make(chan ContractSubmittedEvent, 1)
 	defer close(jobRequests)
 
 	actors.Go(func() error {
-		return smartContract.Listen(actorCtx, jobRequests)
+		return workflow.Contract.Listen(actorCtx, jobRequests)
 	})
 
 	jobsToRefund := make(chan ContractSubmittedEvent, 256)
@@ -34,7 +36,7 @@ func Run(plumbCtx, actorCtx context.Context, plumbingCancel context.CancelFunc) 
 			log.Ctx(plumbCtx).With().Str("action", "Refund").Int("instance", 0).Logger().WithContext(plumbCtx),
 			log.Ctx(actorCtx).With().Str("action", "Refund").Int("instance", 0).Logger().WithContext(actorCtx),
 			jobsToRefund,
-			smartContract.Refund,
+			workflow.Contract.Refund,
 			jobsRefunded,
 			jobsToRefund,
 		)
@@ -62,7 +64,7 @@ func Run(plumbCtx, actorCtx context.Context, plumbingCancel context.CancelFunc) 
 				log.Ctx(plumbCtx).With().Str("action", "CreateJob").Int("instance", inst).Logger().WithContext(plumbCtx),
 				log.Ctx(actorCtx).With().Str("action", "CreateJob").Int("instance", inst).Logger().WithContext(actorCtx),
 				jobRequestsSaved,
-				jobRunner.Create,
+				workflow.Bacalhau.Create,
 				jobsInProgress,
 				jobsToRetryCreate,
 			)
@@ -71,7 +73,8 @@ func Run(plumbCtx, actorCtx context.Context, plumbingCancel context.CancelFunc) 
 	}
 
 	plumbing.Go(func() error {
-		Retry(plumbCtx, 1, jobsToRetryCreate, jobRequestsSaved, jobsToRefund)
+		ctx := log.Ctx(plumbCtx).With().Str("action", "Retry:CreateJob").Logger().WithContext(plumbCtx)
+		Retry(ctx, 1, jobsToRetryCreate, jobRequestsSaved, jobsToRefund)
 		return nil
 	})
 
@@ -121,7 +124,7 @@ func Run(plumbCtx, actorCtx context.Context, plumbingCancel context.CancelFunc) 
 			log.Ctx(actorCtx).With().Str("action", "FindCompleted").Int("instance", 0).Logger().WithContext(actorCtx),
 			log.Ctx(plumbCtx).With().Str("action", "FindCompleted").Int("instance", 0).Logger().WithContext(plumbCtx),
 			jobBatchesInProgress,
-			jobRunner.FindCompleted,
+			workflow.Bacalhau.FindCompleted,
 			jobBatchesCompleted,
 			jobBatchesFailed,
 		)
@@ -161,7 +164,8 @@ func Run(plumbCtx, actorCtx context.Context, plumbingCancel context.CancelFunc) 
 	})
 
 	plumbing.Go(func() error {
-		Retry(plumbCtx, 3, jobsFailed, retryableJobs, refundableJobs)
+		ctx := log.Ctx(plumbCtx).With().Str("action", "Retry:FindCompleted").Logger().WithContext(plumbCtx)
+		Retry(ctx, 3, jobsFailed, retryableJobs, refundableJobs)
 		return nil
 	})
 
@@ -176,10 +180,23 @@ func Run(plumbCtx, actorCtx context.Context, plumbingCancel context.CancelFunc) 
 			log.Ctx(actorCtx).With().Str("action", "Payment").Int("instance", 0).Logger().WithContext(actorCtx),
 			log.Ctx(plumbCtx).With().Str("action", "Payment").Int("instance", 0).Logger().WithContext(plumbCtx),
 			jobsCompleted,
-			smartContract.Complete,
+			workflow.Contract.Complete,
 			jobsPaid,
 			jobsFailedToPay,
 		)
+		return nil
+	})
+
+	jobsFailedToPayToRefund := make(chan BacalhauJobCompletedEvent, 1)
+	plumbing.Go(func() error {
+		Actor(plumbCtx, actorCtx, jobsFailedToPayToRefund, func(ctx context.Context, e BacalhauJobCompletedEvent) ContractSubmittedEvent {
+			return e
+		}, jobsToRefund)
+		return nil
+	})
+
+	plumbing.Go(func() error {
+		Retry(plumbCtx, 20, jobsFailedToPay, jobsCompleted, jobsFailedToPayToRefund)
 		return nil
 	})
 

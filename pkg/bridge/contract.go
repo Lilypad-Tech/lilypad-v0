@@ -18,59 +18,84 @@ type SmartContract interface {
 	Refund(context.Context, ContractSubmittedEvent) (ContractRefundedEvent, error)
 }
 
-type mockContract struct{}
+type ContractCompleteHandler func(context.Context, BacalhauJobCompletedEvent) (ContractPaidEvent, error)
+type ContractRefundHandler func(context.Context, ContractSubmittedEvent) (ContractRefundedEvent, error)
+type ContractListenHandler func(ctx context.Context, c chan<- ContractSubmittedEvent) error
+
+type mockContract struct {
+	CompleteHandler ContractCompleteHandler
+	RefundHandler   ContractRefundHandler
+	ListenHandler   ContractListenHandler
+}
 
 // Complete implements SmartContract
-func (mockContract) Complete(ctx context.Context, e BacalhauJobCompletedEvent) (ContractPaidEvent, error) {
-	log.Ctx(ctx).Debug().Stringer("id", e.OrderId()).Msg("Complete")
+func (mock mockContract) Complete(ctx context.Context, e BacalhauJobCompletedEvent) (ContractPaidEvent, error) {
+	log.Ctx(ctx).Info().Stringer("id", e.OrderId()).Msg("Complete")
+	if mock.CompleteHandler != nil {
+		return mock.CompleteHandler(ctx, e)
+	}
 	return e.Paid(), nil
 }
 
 // Listen implements SmartContract
-func (mockContract) Listen(ctx context.Context, out chan<- ContractSubmittedEvent) error {
+func (mock mockContract) Listen(ctx context.Context, out chan<- ContractSubmittedEvent) error {
 	log.Ctx(ctx).Debug().Msg("Listening")
 	defer log.Ctx(ctx).Debug().Msg("Stopping listening")
 
-	sched := gocron.NewScheduler(time.UTC)
-	_, err := sched.Every(1).Minute().Do(func() {
-		e := &event{
-			Order:       Order{ID: uuid.New()},
-			attempts:    0,
-			lastAttempt: time.Time{},
-			state:       "Submitted",
-			jobSpec: model.Spec{
-				Engine:    model.EngineDocker,
-				Verifier:  model.VerifierNoop,
-				Publisher: model.PublisherEstuary,
-				Docker: model.JobSpecDocker{
-					Image:      "ubuntu",
-					Entrypoint: []string{"date"},
-				},
-				Deal: model.Deal{
-					Concurrency: 1,
-				},
-			},
-		}
-		log.Ctx(ctx).Info().Stringer("id", e.OrderId()).Msg("New order")
-		out <- e
-	})
-	if err != nil {
-		return err
+	if mock.ListenHandler != nil {
+		return mock.ListenHandler(ctx, out)
 	}
-
-	sched.StartAsync()
-	defer sched.Stop()
-
-	<-ctx.Done()
 	return nil
 }
 
+func exampleEvent() ContractSubmittedEvent {
+	return &event{
+		Order:       Order{ID: uuid.New()},
+		attempts:    0,
+		lastAttempt: time.Time{},
+		state:       "Submitted",
+		jobSpec: model.Spec{
+			Engine:    model.EngineDocker,
+			Verifier:  model.VerifierNoop,
+			Publisher: model.PublisherEstuary,
+			Docker: model.JobSpecDocker{
+				Image:      "ubuntu",
+				Entrypoint: []string{""},
+			},
+			Deal: model.Deal{
+				Concurrency: 1,
+			},
+		},
+	}
+}
+
 // Refund implements SmartContract
-func (mockContract) Refund(ctx context.Context, e ContractSubmittedEvent) (ContractRefundedEvent, error) {
-	log.Ctx(ctx).Debug().Stringer("id", e.OrderId()).Msg("Refunded")
+func (mock mockContract) Refund(ctx context.Context, e ContractSubmittedEvent) (ContractRefundedEvent, error) {
+	log.Ctx(ctx).Info().Stringer("id", e.OrderId()).Msg("Refunded")
+	if mock.RefundHandler != nil {
+		return mock.RefundHandler(ctx, e)
+	}
 	return e.Refunded(), nil
 }
 
-func MockContract() SmartContract {
-	return mockContract{}
+func TimerContract() SmartContract {
+	return mockContract{
+		ListenHandler: func(ctx context.Context, out chan<- ContractSubmittedEvent) error {
+			sched := gocron.NewScheduler(time.UTC)
+			_, err := sched.Every(100).Second().Do(func() {
+				e := exampleEvent()
+				log.Ctx(ctx).Info().Stringer("id", e.OrderId()).Msg("New order")
+				out <- e
+			})
+			if err != nil {
+				return err
+			}
+
+			sched.StartAsync()
+			defer sched.Stop()
+
+			<-ctx.Done()
+			return nil
+		},
+	}
 }
