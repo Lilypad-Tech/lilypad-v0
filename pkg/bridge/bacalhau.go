@@ -22,18 +22,27 @@ func init() {
 	}
 }
 
+// A JobRunner is a component that converts events into messages into the
+// Bacalhau network.
 type JobRunner interface {
+	// Create starts a new Bacalhau job for the passed contract submission.
 	Create(ctx context.Context, job ContractSubmittedEvent) (BacalhauJobRunningEvent, error)
 
+	// FindCompleted queries the Bacalhau network for job statuses for the
+	// passed jobs, and returns slices of jobs that have either completed
+	// successfully (according to the network) or have failed.
+	//
+	// Any jobs still in progress are not returned. Any jobs that the network
+	// does not seem to know about are considered failed.
 	FindCompleted(ctx context.Context, jobs []BacalhauJobRunningEvent) ([]BacalhauJobCompletedEvent, []BacalhauJobFailedEvent)
 }
 
-type xRunner struct {
+type bacalhauRunner struct {
 	Client *publicapi.APIClient
 }
 
 // Create implements JobRunner
-func (r *xRunner) Create(ctx context.Context, e ContractSubmittedEvent) (BacalhauJobRunningEvent, error) {
+func (r *bacalhauRunner) Create(ctx context.Context, e ContractSubmittedEvent) (BacalhauJobRunningEvent, error) {
 	job, err := model.NewJobWithSaneProductionDefaults()
 	if err != nil {
 		return nil, errors.Wrap(err, "error creating Bacalhau job")
@@ -54,7 +63,7 @@ func (r *xRunner) Create(ctx context.Context, e ContractSubmittedEvent) (Bacalha
 }
 
 // FindCompleted implements JobRunner
-func (runner *xRunner) FindCompleted(ctx context.Context, jobs []BacalhauJobRunningEvent) ([]BacalhauJobCompletedEvent, []BacalhauJobFailedEvent) {
+func (runner *bacalhauRunner) FindCompleted(ctx context.Context, jobs []BacalhauJobRunningEvent) ([]BacalhauJobCompletedEvent, []BacalhauJobFailedEvent) {
 	log.Ctx(ctx).Debug().Int("jobs", len(jobs)).Msg("Looking at job states")
 
 	completed := make([]BacalhauJobCompletedEvent, 0, len(jobs))
@@ -63,6 +72,7 @@ func (runner *xRunner) FindCompleted(ctx context.Context, jobs []BacalhauJobRunn
 	timeoutCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
+	// TODO: don't limit to 100 jobs...
 	bacjobs, err := runner.Client.List(timeoutCtx, "", []model.IncludedTag{model.IncludedTag(LilypadJobAnnotation)}, nil, 100, false, "created_at", true)
 	if err != nil {
 		log.Ctx(ctx).Error().Err(err).Send()
@@ -71,12 +81,14 @@ func (runner *xRunner) FindCompleted(ctx context.Context, jobs []BacalhauJobRunn
 
 	for _, j := range jobs {
 		ctx := log.Ctx(ctx).With().Stringer("id", j.OrderId()).Str("job", j.JobID()).Logger().WithContext(ctx)
+		found := false
 
 		for _, bacjob := range bacjobs {
 			if bacjob.Metadata.ID != j.JobID() {
 				continue
 			}
 
+			found = true
 			totalShards := job.GetJobTotalExecutionCount(bacjob)
 			jobStillRunning := job.WaitForTerminalStates(totalShards)
 			jobHasErrors := job.WaitThrowErrors([]model.JobStateType{model.JobStateError})
@@ -93,23 +105,37 @@ func (runner *xRunner) FindCompleted(ctx context.Context, jobs []BacalhauJobRunn
 				log.Ctx(ctx).Info().Err(err).Msg("Bacalhau job failed")
 				failed = append(failed, j.Failed())
 			} else {
+				// This would be a programming error – we haven't taken account
+				// of the states properly.
 				log.Ctx(ctx).Warn().Msg("Bacalhau job in unknown state")
 			}
 
 			break
+		}
+
+		// The job was not seen on the network. This is bad! It may have run but
+		// we just can't be sure. So we will have to treat it as failed. It will
+		// be retried and someone else may run it again. At least this way the
+		// user gets a result – if we just errored out here and refunded the
+		// user, someone may still have done some work and we still wouldn't be
+		// paying them...
+		if !found {
+			log.Ctx(ctx).Error().Msg("Bacalhau job not found")
+			failed = append(failed, j.Failed())
 		}
 	}
 
 	return completed, failed
 }
 
-var _ JobRunner = (*xRunner)(nil)
+var _ JobRunner = (*bacalhauRunner)(nil)
 
+// Returns a real job runner that will make real requests against the Bacalhau network.
 func NewJobRunner() JobRunner {
 	apiPort := 1234
 	apiHost := "bootstrap.production.bacalhau.org"
 	client := publicapi.NewAPIClient(fmt.Sprintf("http://%s:%d", apiHost, apiPort))
-	return &xRunner{Client: client}
+	return &bacalhauRunner{Client: client}
 }
 
 type RunnerCreateHandler func(context.Context, ContractSubmittedEvent) (BacalhauJobRunningEvent, error)
@@ -139,6 +165,8 @@ var FailedFind RunnerFindCompletedHandler = func(ctx context.Context, jobs []Bac
 	return nil, failed
 }
 
+// A JobRunner that won't make real requests and instead just runs the supplied
+// functions when its methods are called.
 type mockRunner struct {
 	CreateHandler        RunnerCreateHandler
 	FindCompletedHandler RunnerFindCompletedHandler

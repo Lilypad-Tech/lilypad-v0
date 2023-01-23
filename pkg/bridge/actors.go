@@ -2,11 +2,17 @@ package bridge
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/rs/zerolog/log"
 )
 
+// An Actor receives events on its input channel, runs the passed action for
+// each received, and posts the results to its output channel.
+//
+// An Actor takes two contexts – one for itself and one for its action. If its
+// own context is cancelled, it will allow the action to complete and then
+// close, allowing a graceful shutdown. If its action's context is cancelled,
+// the action is immediately ended and the actor closes.
 func Actor[EIn any, EOut any](
 	ctx, actionCtx context.Context,
 	in <-chan EIn,
@@ -28,6 +34,8 @@ func Actor[EIn any, EOut any](
 	}
 }
 
+// A TwoActor is like an Actor except the action it is given produces two
+// values, and each are posted to a separate channel.
 func TwoActor[EIn, EOut1, EOut2 any](
 	ctx, actionCtx context.Context,
 	in <-chan EIn,
@@ -52,6 +60,8 @@ func TwoActor[EIn, EOut1, EOut2 any](
 	}
 }
 
+// An ErrorActor is like an Actor, except if its passed action returns an error
+// it will post the input action to an error channel.
 func ErrorActor[EIn any, EOut any](
 	ctx, actionCtx context.Context,
 	in <-chan EIn,
@@ -80,6 +90,8 @@ func ErrorActor[EIn any, EOut any](
 	}
 }
 
+// Flatten is an Actor that receives a slice of values and sends each one
+// individually to its output channel.
 func Flatten[E any](ctx context.Context, in <-chan []E, out chan<- E) {
 	for {
 		select {
@@ -93,20 +105,23 @@ func Flatten[E any](ctx context.Context, in <-chan []E, out chan<- E) {
 	}
 }
 
+// Pesist is a placeholder for saving events to the database.
 func Persist[E Event](ctx context.Context, in <-chan E, out chan<- E) {
 	ctx = log.Ctx(ctx).With().Str("action", "Persist").Logger().WithContext(ctx)
 	Actor(ctx, ctx, in, func(ctx context.Context, in E) E {
 		// Persist...
-		log.Ctx(ctx).Debug().Stringer("id", in.OrderId()).Str("state", fmt.Sprintf("%T", in)).Msg("Saved")
+		log.Ctx(ctx).Debug().Stringer("id", in.OrderId()).Msg("Saved")
 		return in
 	}, out)
 }
 
+// Fetch is a placeholder for retrieving events from the database.
 func Fetch[E any](ctx context.Context, out chan<- E) {
 	log.Ctx(ctx).Debug().Msg("Fetch started")
 	// Fetch...
 }
 
+// Discard consumes and ignores everything on its input channel.
 func Discard[E any](ctx context.Context, in <-chan E) {
 	for {
 		select {

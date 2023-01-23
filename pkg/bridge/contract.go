@@ -50,7 +50,7 @@ func (mock mockContract) Listen(ctx context.Context, out chan<- ContractSubmitte
 
 func exampleEvent() ContractSubmittedEvent {
 	return &event{
-		Order:       Order{ID: uuid.New()},
+		orderId:     uuid.New(),
 		attempts:    0,
 		lastAttempt: time.Time{},
 		state:       "Submitted",
