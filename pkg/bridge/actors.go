@@ -2,7 +2,6 @@ package bridge
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	"github.com/rs/zerolog/log"
@@ -117,16 +116,4 @@ func Discard[E any](ctx context.Context, in <-chan E) {
 			return
 		}
 	}
-}
-
-func Retry[E Retryable](ctx context.Context, maxAttempts int, in <-chan E, retry chan<- E, cancel chan<- E) {
-	ctx = log.Ctx(ctx).With().Str("action", "Retry").Logger().WithContext(ctx)
-	ErrorActor(ctx, ctx, in, func(ctx context.Context, e E) (E, error) {
-		if e.Attempts() >= maxAttempts {
-			return e, errors.New("over max retry attempts")
-		} else {
-			e.AddAttempt()
-			return e, nil
-		}
-	}, retry, cancel)
 }

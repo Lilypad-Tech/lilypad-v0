@@ -3,6 +3,7 @@ package bridge
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/filecoin-project/bacalhau/pkg/model"
@@ -59,7 +60,10 @@ func (runner *xRunner) FindCompleted(ctx context.Context, jobs []BacalhauJobRunn
 	completed := make([]BacalhauJobCompletedEvent, 0, len(jobs))
 	failed := make([]BacalhauJobFailedEvent, 0, len(jobs))
 
-	bacjobs, err := runner.Client.List(ctx, "", []model.IncludedTag{model.IncludedTag(LilypadJobAnnotation)}, nil, 100, false, "created_at", true)
+	timeoutCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	bacjobs, err := runner.Client.List(timeoutCtx, "", []model.IncludedTag{model.IncludedTag(LilypadJobAnnotation)}, nil, 100, false, "created_at", true)
 	if err != nil {
 		log.Ctx(ctx).Error().Err(err).Send()
 		return completed, failed
