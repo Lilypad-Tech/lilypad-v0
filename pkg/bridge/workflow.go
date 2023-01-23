@@ -59,8 +59,8 @@ func Run(plumbCtx, actorCtx context.Context, plumbingCancel context.CancelFunc) 
 		inst := i
 		actors.Go(func() error {
 			ErrorActor(
-				log.Ctx(actorCtx).With().Str("action", "CreateJob").Int("instance", inst).Logger().WithContext(actorCtx),
 				log.Ctx(plumbCtx).With().Str("action", "CreateJob").Int("instance", inst).Logger().WithContext(plumbCtx),
+				log.Ctx(actorCtx).With().Str("action", "CreateJob").Int("instance", inst).Logger().WithContext(actorCtx),
 				jobRequestsSaved,
 				jobRunner.Create,
 				jobsInProgress,
@@ -81,8 +81,21 @@ func Run(plumbCtx, actorCtx context.Context, plumbingCancel context.CancelFunc) 
 		Persist(plumbCtx, jobsInProgress, jobsInProgressSaved)
 		return nil
 	})
+
+	jobBatchesInProgress := make(chan []BacalhauJobRunningEvent, 256)
+	defer close(jobBatchesInProgress)
+
 	plumbing.Go(func() error {
-		Discard(plumbCtx, jobsInProgressSaved)
+		Actor(
+			log.Ctx(plumbCtx).With().Str("action", "FetchJob").Int("instance", 0).Logger().WithContext(plumbCtx),
+			log.Ctx(actorCtx).With().Str("action", "FetchJob").Int("instance", 0).Logger().WithContext(actorCtx),
+			jobsInProgressSaved,
+			func(ctx context.Context, bjre BacalhauJobRunningEvent) []BacalhauJobRunningEvent {
+				log.Ctx(ctx).Debug().Msg("returning stuff")
+				return []BacalhauJobRunningEvent{bjre}
+			},
+			jobBatchesInProgress,
+		)
 		return nil
 	})
 
@@ -91,13 +104,11 @@ func Run(plumbCtx, actorCtx context.Context, plumbingCancel context.CancelFunc) 
 	scheduler.StartAsync()
 	defer scheduler.Stop()
 
-	jobBatchesInProgress := make(chan []BacalhauJobRunningEvent, 256)
-	defer close(jobBatchesInProgress)
-	fetchJobs := func() { Fetch(actorCtx, jobBatchesInProgress) }
-	_, err = scheduler.Every(5).Seconds().Do(fetchJobs)
-	if err != nil {
-		return err
-	}
+	// fetchJobs := func() { Fetch(actorCtx, jobBatchesInProgress) }
+	// _, err = scheduler.Every(5).Seconds().Do(fetchJobs)
+	// if err != nil {
+	// 	return err
+	// }
 
 	jobBatchesCompleted := make(chan []BacalhauJobCompletedEvent, 256)
 	defer close(jobBatchesCompleted)

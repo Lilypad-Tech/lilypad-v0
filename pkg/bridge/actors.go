@@ -3,6 +3,7 @@ package bridge
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/rs/zerolog/log"
 )
@@ -13,8 +14,8 @@ func Actor[EIn any, EOut any](
 	action func(context.Context, EIn) EOut,
 	out chan<- EOut,
 ) {
-	log.Ctx(ctx).Debug().Msg("Actor started")
-	defer log.Ctx(ctx).Debug().Msg("Actor stopped")
+	log.Ctx(ctx).Debug().Msg("Started")
+	defer log.Ctx(ctx).Debug().Msg("Stopped")
 
 	for {
 		select {
@@ -35,8 +36,8 @@ func TwoActor[EIn, EOut1, EOut2 any](
 	out1 chan<- EOut1,
 	out2 chan<- EOut2,
 ) {
-	log.Ctx(ctx).Debug().Msg("TwoActor started")
-	defer log.Ctx(ctx).Debug().Msg("TwoActor stopped")
+	log.Ctx(ctx).Debug().Msg("Started")
+	defer log.Ctx(ctx).Debug().Msg("Stopped")
 
 	for {
 		select {
@@ -59,8 +60,8 @@ func ErrorActor[EIn any, EOut any](
 	out chan<- EOut,
 	errored chan<- EIn,
 ) {
-	log.Ctx(ctx).Debug().Msg("ErrorActor started")
-	defer log.Ctx(ctx).Debug().Msg("ErrorActor stopped")
+	log.Ctx(ctx).Debug().Msg("Started")
+	defer log.Ctx(ctx).Debug().Msg("Stopped")
 
 	for {
 		select {
@@ -93,9 +94,11 @@ func Flatten[E any](ctx context.Context, in <-chan []E, out chan<- E) {
 	}
 }
 
-func Persist[E any](ctx context.Context, in <-chan E, out chan<- E) {
+func Persist[E Event](ctx context.Context, in <-chan E, out chan<- E) {
+	ctx = log.Ctx(ctx).With().Str("action", "Persist").Logger().WithContext(ctx)
 	Actor(ctx, ctx, in, func(ctx context.Context, in E) E {
 		// Persist...
+		log.Ctx(ctx).Debug().Stringer("id", in.OrderId()).Str("state", fmt.Sprintf("%T", in)).Msg("Saved")
 		return in
 	}, out)
 }
@@ -117,6 +120,7 @@ func Discard[E any](ctx context.Context, in <-chan E) {
 }
 
 func Retry[E Retryable](ctx context.Context, maxAttempts int, in <-chan E, retry chan<- E, cancel chan<- E) {
+	ctx = log.Ctx(ctx).With().Str("action", "Retry").Logger().WithContext(ctx)
 	ErrorActor(ctx, ctx, in, func(ctx context.Context, e E) (E, error) {
 		if e.Attempts() >= maxAttempts {
 			return e, errors.New("over max retry attempts")
