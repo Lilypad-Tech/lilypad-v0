@@ -2,6 +2,7 @@ package bridge
 
 import (
 	"context"
+	"encoding/json"
 	"time"
 
 	"github.com/filecoin-project/bacalhau/pkg/model"
@@ -49,23 +50,27 @@ func (mock mockContract) Listen(ctx context.Context, out chan<- ContractSubmitte
 }
 
 func exampleEvent() ContractSubmittedEvent {
+	spec, err := json.Marshal(model.Spec{
+		Engine:    model.EngineDocker,
+		Verifier:  model.VerifierNoop,
+		Publisher: model.PublisherEstuary,
+		Docker: model.JobSpecDocker{
+			Image:      "ubuntu",
+			Entrypoint: []string{"date"},
+		},
+		Deal: model.Deal{
+			Concurrency: 1,
+		},
+	})
+	if err != nil {
+		panic(err)
+	}
 	return &event{
 		orderId:     uuid.New(),
 		attempts:    0,
 		lastAttempt: time.Time{},
-		state:       "Submitted",
-		jobSpec: model.Spec{
-			Engine:    model.EngineDocker,
-			Verifier:  model.VerifierNoop,
-			Publisher: model.PublisherEstuary,
-			Docker: model.JobSpecDocker{
-				Image:      "ubuntu",
-				Entrypoint: []string{""},
-			},
-			Deal: model.Deal{
-				Concurrency: 1,
-			},
-		},
+		state:       OrderStateSubmitted,
+		jobSpec:     spec,
 	}
 }
 
@@ -82,7 +87,7 @@ func TimerContract() SmartContract {
 	return mockContract{
 		ListenHandler: func(ctx context.Context, out chan<- ContractSubmittedEvent) error {
 			sched := gocron.NewScheduler(time.UTC)
-			_, err := sched.Every(100).Second().Do(func() {
+			_, err := sched.WaitForSchedule().Every(10).Second().Do(func() {
 				e := exampleEvent()
 				log.Ctx(ctx).Info().Stringer("id", e.OrderId()).Msg("New order")
 				out <- e

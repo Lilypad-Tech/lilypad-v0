@@ -2,6 +2,7 @@ package bridge
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/go-co-op/gocron"
@@ -31,6 +32,7 @@ import (
 type Workflow struct {
 	Bacalhau JobRunner
 	Contract SmartContract
+	Repo     Repository
 }
 
 // Run the workflow: listen to the smart contract and process any orders that
@@ -59,7 +61,7 @@ func (workflow *Workflow) Run(plumbCtx, actorCtx context.Context, plumbingCancel
 	defer close(jobRequestsSaved)
 
 	plumbing.Go(func() error {
-		Persist(plumbCtx, jobRequests, jobRequestsSaved)
+		Persist(plumbCtx, jobRequests, workflow.Repo, jobRequestsSaved)
 		return nil
 	})
 
@@ -80,6 +82,19 @@ func (workflow *Workflow) Run(plumbCtx, actorCtx context.Context, plumbingCancel
 			jobsRefunded,
 			jobsToRefund, // TODO: apply retry back-off
 		)
+		return nil
+	})
+
+	jobsRefundedSaved := make(chan ContractRefundedEvent, 1)
+	defer close(jobsRefundedSaved)
+
+	plumbing.Go(func() error {
+		Persist(plumbCtx, jobsRefunded, workflow.Repo, jobsRefundedSaved)
+		return nil
+	})
+
+	plumbing.Go(func() error {
+		Discard(plumbCtx, jobsRefundedSaved)
 		return nil
 	})
 
@@ -117,7 +132,7 @@ func (workflow *Workflow) Run(plumbCtx, actorCtx context.Context, plumbingCancel
 	defer close(jobsInProgressSaved)
 
 	plumbing.Go(func() error {
-		Persist(plumbCtx, jobsInProgress, jobsInProgressSaved)
+		Persist(plumbCtx, jobsInProgress, workflow.Repo, jobsInProgressSaved)
 		return nil
 	})
 
@@ -145,14 +160,17 @@ func (workflow *Workflow) Run(plumbCtx, actorCtx context.Context, plumbingCancel
 	// calls. For any jobs that have failed, try to run them again.
 	scheduler := gocron.NewScheduler(time.UTC)
 	scheduler.SetMaxConcurrentJobs(1, gocron.WaitMode)
-	scheduler.StartAsync()
-	defer scheduler.Stop()
+	go func() {
+		scheduler.StartAsync()
+		defer scheduler.Stop()
+		<-plumbCtx.Done()
+	}()
 
-	// fetchJobs := func() { Fetch(actorCtx, jobBatchesInProgress) }
-	// _, err = scheduler.Every(5).Seconds().Do(fetchJobs)
-	// if err != nil {
-	// 	return err
-	// }
+	fetchJobs := func() { Fetch(plumbCtx, workflow.Repo, OrderStateRunning, jobBatchesInProgress) }
+	_, err = scheduler.Every(5).Seconds().Do(fetchJobs)
+	if err != nil {
+		return err
+	}
 
 	jobBatchesCompleted := make(chan []BacalhauJobCompletedEvent, 256)
 	defer close(jobBatchesCompleted)
@@ -210,6 +228,12 @@ func (workflow *Workflow) Run(plumbCtx, actorCtx context.Context, plumbingCancel
 		return nil
 	})
 
+	jobsCompletedSaved := make(chan BacalhauJobCompletedEvent, 1)
+	plumbing.Go(func() error {
+		Persist(plumbCtx, jobsCompleted, workflow.Repo, jobsCompletedSaved)
+		return nil
+	})
+
 	// For jobs that have completed, send them back to the smart contract for payment.
 	jobsPaid := make(chan ContractPaidEvent, 1)
 	defer close(jobsPaid)
@@ -221,7 +245,7 @@ func (workflow *Workflow) Run(plumbCtx, actorCtx context.Context, plumbingCancel
 		ErrorActor(
 			log.Ctx(actorCtx).With().Str("action", "Payment").Int("instance", 0).Logger().WithContext(actorCtx),
 			log.Ctx(plumbCtx).With().Str("action", "Payment").Int("instance", 0).Logger().WithContext(plumbCtx),
-			jobsCompleted,
+			jobsCompletedSaved,
 			workflow.Contract.Complete,
 			jobsPaid,
 			jobsFailedToPay,
@@ -246,7 +270,7 @@ func (workflow *Workflow) Run(plumbCtx, actorCtx context.Context, plumbingCancel
 	defer close(jobsPaidSaved)
 
 	plumbing.Go(func() error {
-		Persist(plumbCtx, jobsPaid, jobsPaidSaved)
+		Persist(plumbCtx, jobsPaid, workflow.Repo, jobsPaidSaved)
 		return nil
 	})
 
@@ -254,6 +278,11 @@ func (workflow *Workflow) Run(plumbCtx, actorCtx context.Context, plumbingCancel
 		Discard(plumbCtx, jobsPaidSaved)
 		return nil
 	})
+
+	// All the pipes are set up! Now put the events in the database back into
+	// the pipes in the right places.
+	plumbing.Go(func() error { return reload(workflow.Repo, OrderStateSubmitted, jobRequestsSaved) })
+	plumbing.Go(func() error { return reload(workflow.Repo, OrderStateCompleted, jobsCompleted) })
 
 	log.Ctx(actorCtx).Info().Msg("Ready")
 	defer log.Ctx(actorCtx).Info().Msg("Shutdown")
@@ -263,4 +292,21 @@ func (workflow *Workflow) Run(plumbCtx, actorCtx context.Context, plumbingCancel
 	err = actors.Wait()
 	plumbingCancel()
 	return multierr.Combine(err, plumbing.Wait())
+}
+
+func reload[E Event](repo Repository, state OrderState, pipe chan<- E) error {
+	events, err := repo.Reload(state)
+	if err != nil {
+		return err
+	}
+
+	for _, event := range events {
+		if casted, ok := event.(E); !ok {
+			return fmt.Errorf("failed to cast %T to Event interface", event)
+		} else {
+			pipe <- casted
+		}
+	}
+
+	return nil
 }

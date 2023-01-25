@@ -48,7 +48,11 @@ func (r *bacalhauRunner) Create(ctx context.Context, e ContractSubmittedEvent) (
 		return nil, errors.Wrap(err, "error creating Bacalhau job")
 	}
 
-	job.Spec = e.Spec()
+	job.Spec, err = e.Spec()
+	if err != nil {
+		return nil, errors.Wrap(err, "invalid job spec")
+	}
+
 	job.Spec.Annotations = append(job.Spec.Annotations,
 		LilypadJobAnnotation,
 		fmt.Sprintf("%s-%s", LilypadJobAnnotation, e.OrderId()), // TODO do some encryption thing here
@@ -68,6 +72,9 @@ func (runner *bacalhauRunner) FindCompleted(ctx context.Context, jobs []Bacalhau
 
 	completed := make([]BacalhauJobCompletedEvent, 0, len(jobs))
 	failed := make([]BacalhauJobFailedEvent, 0, len(jobs))
+	if len(jobs) <= 0 {
+		return completed, failed
+	}
 
 	timeoutCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()

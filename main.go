@@ -20,12 +20,19 @@ func main() {
 	defer gracefulCancel()
 	defer immediateCancel()
 
+	repo, err := bridge.NewSQLiteRepository(immediateStop, "cool.sqlite")
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err.Error())
+		return
+	}
+
 	workflow := bridge.Workflow{
 		Bacalhau: bridge.NewJobRunner(),
 		Contract: bridge.TimerContract(),
+		Repo:     repo,
 	}
 
-	err := workflow.Run(immediateStop, gracefulStop, immediateCancel)
+	err = workflow.Run(immediateStop, gracefulStop, immediateCancel)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err.Error())
 	}

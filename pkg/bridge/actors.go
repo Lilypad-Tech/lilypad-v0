@@ -3,6 +3,7 @@ package bridge
 import (
 	"context"
 
+	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 )
 
@@ -106,19 +107,35 @@ func Flatten[E any](ctx context.Context, in <-chan []E, out chan<- E) {
 }
 
 // Pesist is a placeholder for saving events to the database.
-func Persist[E Event](ctx context.Context, in <-chan E, out chan<- E) {
+func Persist[E Event](ctx context.Context, in <-chan E, repo Repository, out chan<- E) {
 	ctx = log.Ctx(ctx).With().Str("action", "Persist").Logger().WithContext(ctx)
 	Actor(ctx, ctx, in, func(ctx context.Context, in E) E {
-		// Persist...
-		log.Ctx(ctx).Debug().Stringer("id", in.OrderId()).Msg("Saved")
+		err := repo.Save(in)
+		level := map[bool]zerolog.Level{true: zerolog.DebugLevel, false: zerolog.ErrorLevel}[err == nil]
+		log.Ctx(ctx).WithLevel(level).Stringer("id", in.OrderId()).Err(err).Msg("Saved")
 		return in
 	}, out)
 }
 
 // Fetch is a placeholder for retrieving events from the database.
-func Fetch[E any](ctx context.Context, out chan<- E) {
+func Fetch[E Event](ctx context.Context, repo Repository, state OrderState, out chan<- []E) {
 	log.Ctx(ctx).Debug().Msg("Fetch started")
-	// Fetch...
+
+	events, err := repo.Reload(state)
+	if err != nil {
+		log.Ctx(ctx).Error().Err(err).Send()
+	} else {
+		es := make([]E, 0, len(events))
+		for _, e := range events {
+			if ec, ok := e.(E); ok {
+				es = append(es, ec)
+			} else {
+				log.Ctx(ctx).Error().Msg("failed to cast event")
+			}
+		}
+		log.Ctx(ctx).Debug().Int("count", len(es)).Msg("Fetch finished")
+		out <- es
+	}
 }
 
 // Discard consumes and ignores everything on its input channel.

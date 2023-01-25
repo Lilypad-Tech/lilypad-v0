@@ -1,14 +1,36 @@
 package bridge
 
 import (
+	"encoding/json"
 	"time"
 
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/google/uuid"
 )
 
+type OrderState int
+
+const (
+	OrderStateSubmitted = iota
+	OrderStateRunning
+	OrderStateCompleted
+	OrderStatePaid
+	OrderStateRefunded
+)
+
+func OrderStates() [5]OrderState {
+	return [5]OrderState{
+		OrderStateSubmitted,
+		OrderStateRunning,
+		OrderStateCompleted,
+		OrderStatePaid,
+		OrderStateRefunded,
+	}
+}
+
 type Event interface {
 	OrderId() uuid.UUID
+	OrderState() OrderState
 }
 
 type Retryable interface {
@@ -21,7 +43,7 @@ type ContractSubmittedEvent interface {
 	Event
 	Retryable
 
-	Spec() model.Spec
+	Spec() (model.Spec, error)
 
 	Refunded() ContractRefundedEvent
 	Paid() ContractPaidEvent
@@ -67,17 +89,22 @@ type ContractRefundedEvent interface {
 }
 
 type event struct {
+	eventId     int
 	orderId     uuid.UUID
 	attempts    int
 	lastAttempt time.Time
-	state       string
-	jobSpec     model.Spec
+	state       OrderState
+	jobSpec     []byte
 	jobId       string
 }
 
 // The smart contract order ID.
 func (e *event) OrderId() uuid.UUID {
 	return e.orderId
+}
+
+func (e *event) OrderState() OrderState {
+	return e.state
 }
 
 // Log the event as being retried.
@@ -101,7 +128,7 @@ func (e *event) LastAttempt() time.Time {
 // Records that a ContractSubmittedEvent has been sent to the Bacalhau network
 // as a job.
 func (e *event) JobCreated(job *model.Job) BacalhauJobRunningEvent {
-	e.state = "JobCreated"
+	e.state = OrderStateRunning
 	e.jobId = job.Metadata.ID
 	return e
 }
@@ -109,25 +136,26 @@ func (e *event) JobCreated(job *model.Job) BacalhauJobRunningEvent {
 // Records that a BacalhauJobCompletedEvent has been successfully sent to the
 // smart contract for payment.
 func (e *event) Paid() ContractPaidEvent {
-	e.state = "Paid"
+	e.state = OrderStatePaid
 	return e
 }
 
 // Records that an Event has been successfully returned to the smart contract
 // for a refund.
 func (e *event) Refunded() ContractRefundedEvent {
-	e.state = "Refunded"
+	e.state = OrderStateRefunded
 	return e
 }
 
 // The Bacalhau job spec that the contract is asking us to run.
-func (e *event) Spec() model.Spec {
-	return e.jobSpec
+func (e *event) Spec() (spec model.Spec, err error) {
+	err = json.Unmarshal(e.jobSpec, &spec)
+	return
 }
 
 // Records that a running Bacalhau job has completed.
 func (e *event) Completed() BacalhauJobCompletedEvent {
-	e.state = "JobCompleted"
+	e.state = OrderStateCompleted
 	return e
 }
 

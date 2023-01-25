@@ -3,6 +3,7 @@ package bridge
 import (
 	"context"
 	"errors"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -19,6 +20,7 @@ type WorkflowTestSuite struct {
 
 	selectCancel context.CancelFunc
 
+	workflowCtx    context.Context
 	workflowGroup  errgroup.Group
 	workflowCancel context.CancelFunc
 }
@@ -33,16 +35,16 @@ func (suite *WorkflowTestSuite) SetupSuite() {
 }
 
 func (suite *WorkflowTestSuite) SetupTest() {
+	ctx, cancel := context.WithCancel(context.Background())
+	suite.workflowCtx = ctx
+	suite.workflowCancel = cancel
 	suite.completed = make(chan ContractPaidEvent, 1)
 	suite.refunded = make(chan ContractRefundedEvent, 1)
 }
 
 func (suite *WorkflowTestSuite) RunWorkflow(w *Workflow) {
-	ctx, engineCancel := context.WithCancel(context.Background())
-	suite.workflowCancel = engineCancel
-
 	suite.workflowGroup.Go(func() error {
-		return w.Run(ctx, ctx, engineCancel)
+		return w.Run(suite.workflowCtx, suite.workflowCtx, suite.workflowCancel)
 	})
 }
 
@@ -50,6 +52,13 @@ func (suite *WorkflowTestSuite) Timeout() <-chan struct{} {
 	timeout, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
 	suite.selectCancel = cancel
 	return timeout.Done()
+}
+
+func (suite *WorkflowTestSuite) Repository() Repository {
+	tempDir := suite.T().TempDir()
+	repo, err := NewSQLiteRepository(suite.workflowCtx, filepath.Join(tempDir, "test.sqlite"))
+	suite.NoError(err)
+	return repo
 }
 
 func (suite *WorkflowTestSuite) TearDownTest() {
@@ -97,6 +106,7 @@ func (suite *WorkflowTestSuite) TestHappyPath() {
 			RefundHandler:   suite.SuccessfulRefund(),
 			ListenHandler:   suite.EmitOne(e),
 		},
+		Repo: suite.Repository(),
 	})
 
 	select {
@@ -121,9 +131,8 @@ func (suite *WorkflowTestSuite) TestRefundsOnFail() {
 		RefundHandler:   suite.SuccessfulRefund(),
 		ListenHandler:   suite.EmitOne(e),
 	}
-	w := &Workflow{Bacalhau: runner, Contract: contract}
 
-	runTest := func() {
+	runTest := func(w *Workflow) {
 		suite.RunWorkflow(w)
 
 		select {
@@ -137,22 +146,25 @@ func (suite *WorkflowTestSuite) TestRefundsOnFail() {
 	}
 
 	suite.Run("Create", func() {
+		suite.SetupTest()
 		runner.CreateHandler = ErrorCreate
-		runTest()
+		runTest(&Workflow{Bacalhau: runner, Contract: contract, Repo: suite.Repository()})
 		runner.CreateHandler = SuccessfulCreate
 		suite.TearDownTest()
 	})
 
 	suite.Run("FindCompleted", func() {
+		suite.SetupTest()
 		runner.FindCompletedHandler = FailedFind
-		runTest()
+		runTest(&Workflow{Bacalhau: runner, Contract: contract, Repo: suite.Repository()})
 		runner.FindCompletedHandler = SuccssfulFind
 		suite.TearDownTest()
 	})
 
 	suite.Run("Paid", func() {
+		suite.SetupTest()
 		contract.CompleteHandler = suite.ErrorComplete()
-		runTest()
+		runTest(&Workflow{Bacalhau: runner, Contract: contract, Repo: suite.Repository()})
 		contract.CompleteHandler = suite.SuccessfulComplete()
 		suite.TearDownTest()
 	})
