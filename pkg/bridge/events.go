@@ -184,12 +184,14 @@ func (e *event) JobError() BacalhauJobFailedEvent {
 	return e
 }
 
+// Records that an errored Bacalhau job is being retried.
 func (e *event) Retry() ContractSubmittedEvent {
 	e.state = OrderStateSubmitted
 	e.AddAttempt()
 	return e
 }
 
+// Records that a contract has failed permanently.
 func (e *event) Failed() ContractFailedEvent {
 	e.state = OrderStateFailed
 	return e

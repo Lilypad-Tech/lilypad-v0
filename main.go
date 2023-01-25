@@ -18,7 +18,7 @@ func main() {
 	ctx, cancel := signal.NotifyContext(ctx, os.Interrupt)
 	defer cancel()
 
-	repo, err := bridge.NewSQLiteRepository(ctx, "cool.sqlite")
+	repo, err := bridge.NewSQLiteRepository(ctx, "lilypad.sqlite")
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err.Error())
 		return

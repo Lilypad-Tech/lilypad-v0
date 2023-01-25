@@ -15,20 +15,23 @@ import (
 // being made on a smart contract, a job being run on Bacalhau, and the smart
 // contract being paid.
 //
-// The Workflow is modelled as a set of Actors – goroutines that read from and
-// post to channels. This model allows us to encapsulate the complex logic of
-// dealing with a smart contract and Bacalhau into a simple components, but then
-// to scale these components efficiently as we receive more and more load on the
-// service.
+// The Workflow is modelled as a simple state machine that hands off state
+// transitions to other objects. This model allows us to encapsulate the complex
+// logic of dealing with a smart contract and Bacalhau into simple components,
+// but then to apply common persistance and retry logic to all states.
 //
-// For example, using this model means we can have three workers posting to the
-// Bacalhau network at once – something that is is relatively slow and would be
-// a bottleneck at high load.
+// Note that the workflow does not include an action to check that an individual
+// job is running on Bacalhau. Because jobs are relatively long lived (~minutes)
+// we would quickly fill up our buffers with jobs in the running state and have
+// no room for any more new ones. So as an optimisation, we instead periodically
+// reload all of the running jobs from the DB and check all of them at once, and
+// only post them back into the state machine if they are finished.
 //
-// It also allows Actors to be composed with generic logic that handles
-// persistence and retries, so that we can easily handle failing to perform some
-// action without having to pollute those components with the detail of how
-// those retries or persists are done.
+// Note also that the workflow uses two work queues, one for adding events to
+// the state machine and one for continuing to process those already present.
+// Pre-existing events are processed over new ones. This is to ensure that new
+// events can't clog up the system to such an extent that the workers can't push
+// results onto the queue anymore, and thus would be deadlocked.
 type Workflow struct {
 	Bacalhau JobRunner
 	Contract SmartContract
@@ -55,6 +58,8 @@ func NewWorkflow(jr JobRunner, sc SmartContract, repo Repository) *Workflow {
 	}
 }
 
+// Start spins up all of the goroutines that will generate and process items in
+// the workflow. It will block until the passed context is cancelled.
 func (workflow *Workflow) Start(ctx context.Context) error {
 	wg := multierrgroup.Group{}
 
@@ -105,10 +110,14 @@ func (workflow *Workflow) Start(ctx context.Context) error {
 		return ReloadToChan[BacalhauJobFailedEvent](workflow.Repo, OrderStateJobError, newEvents)
 	})
 
+	log.Ctx(ctx).Info().Msg("Bridge ready")
+	defer log.Ctx(ctx).Info().Msg("Bridge shutdown")
+
 	return wg.Wait()
 }
 
-func (workflow *Workflow) Run(ctx context.Context, newEvents <-chan Event) error {
+// Run processes events on the work queue, transitioning them through the state
+// machine. It will block until the passed context is cancelled.
 func (workflow *Workflow) Run(ctx context.Context, newEvents <-chan Event) (err error) {
 	processedEvents := make(chan Event, 256)
 
@@ -146,8 +155,18 @@ func (workflow *Workflow) Run(ctx context.Context, newEvents <-chan Event) (err 
 	}
 }
 
+// ProcessEvent will transition a single event through the state machine,
+// returning the event in a new state (or the same state if the action failed).
+//
+// If the returned event is nil, then the event shouldn't be processed any more.
+// If the resturned wait time is non-zero, further actions on that event should
+// be delayed until that time has elapsed.
+func (workflow *Workflow) ProcessEvent(ctx context.Context, event Event) (result Event, wait time.Duration) {
 	var err error
-	log.Ctx(ctx).Trace().Stringer("id", event.OrderId()).Stringer("state", event.OrderState()).Msg("Process event")
+	log.Ctx(ctx).Trace().
+		Stringer("id", event.OrderId()).
+		Stringer("state", event.OrderState()).
+		Msg("Process event")
 
 	currentState := event.OrderState()
 	switch currentState {
@@ -186,15 +205,18 @@ func (workflow *Workflow) Run(ctx context.Context, newEvents <-chan Event) (err 
 		saveError := workflow.Repo.Save(result)
 		log.Ctx(ctx).WithLevel(level(saveError)).
 			Err(saveError).
-			Stringer("oldState", currentState).
-			Stringer("newState", result.OrderState()).
+			Stringer("old", currentState).
+			Stringer("new", result.OrderState()).
 			Msg("Saving result")
 	}
 
 	return
 }
 
-func (workflow *Workflow) CheckRunningEvents(ctx context.Context, out chan<- Event) {
+// checkRunningEvents reloads the Bacalhau jobs that should be running and finds
+// the ones that have finished, pushing them back onto the state machine queue
+// for the result of the job to be processed.
+func (workflow *Workflow) checkRunningEvents(ctx context.Context, out chan<- Event) {
 	jobs, err := Reload[BacalhauJobRunningEvent](workflow.Repo, OrderStateRunning)
 	log.Ctx(ctx).WithLevel(level(err)).Err(err).Int("count", len(jobs)).Msg("Reloaded running events")
 
