@@ -7,7 +7,7 @@ import (
 
 	"github.com/filecoin-project/bacalhau/pkg/job"
 	"github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/filecoin-project/bacalhau/pkg/requester/publicapi"
+	"github.com/filecoin-project/bacalhau/pkg/publicapi"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
@@ -38,7 +38,7 @@ type JobRunner interface {
 }
 
 type bacalhauRunner struct {
-	Client *publicapi.RequesterAPIClient
+	Client *publicapi.APIClient
 }
 
 // Create implements JobRunner
@@ -53,7 +53,7 @@ func (r *bacalhauRunner) Create(ctx context.Context, e ContractSubmittedEvent) (
 		LilypadJobAnnotation,
 		fmt.Sprintf("%s-%s", LilypadJobAnnotation, e.OrderId()), // TODO do some encryption thing here
 	)
-	job, err = r.Client.Submit(ctx, job)
+	job, err = r.Client.Submit(ctx, job, nil)
 	if err != nil {
 		err = errors.Wrap(err, "error submitting Bacalhau job")
 	}
@@ -134,7 +134,7 @@ var _ JobRunner = (*bacalhauRunner)(nil)
 func NewJobRunner() JobRunner {
 	apiPort := 1234
 	apiHost := "bootstrap.production.bacalhau.org"
-	client := publicapi.NewRequesterAPIClient(fmt.Sprintf("http://%s:%d", apiHost, apiPort))
+	client := publicapi.NewAPIClient(fmt.Sprintf("http://%s:%d", apiHost, apiPort))
 	return &bacalhauRunner{Client: client}
 }
 
