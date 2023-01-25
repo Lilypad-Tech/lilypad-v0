@@ -8,23 +8,28 @@ import (
 	"github.com/google/uuid"
 )
 
+//go:generate stringer -type=OrderState --trimprefix=OrderState
 type OrderState int
 
 const (
-	OrderStateSubmitted = iota
+	OrderStateSubmitted OrderState = iota
 	OrderStateRunning
 	OrderStateCompleted
 	OrderStatePaid
 	OrderStateRefunded
+	OrderStateJobError
+	OrderStateFailed
 )
 
-func OrderStates() [5]OrderState {
-	return [5]OrderState{
+func OrderStates() [7]OrderState {
+	return [7]OrderState{
 		OrderStateSubmitted,
 		OrderStateRunning,
 		OrderStateCompleted,
 		OrderStatePaid,
 		OrderStateRefunded,
+		OrderStateJobError,
+		OrderStateFailed,
 	}
 }
 
@@ -34,6 +39,8 @@ type Event interface {
 }
 
 type Retryable interface {
+	Event
+
 	Attempts() int
 	AddAttempt() int
 	LastAttempt() time.Time
@@ -45,8 +52,7 @@ type ContractSubmittedEvent interface {
 
 	Spec() (model.Spec, error)
 
-	Refunded() ContractRefundedEvent
-	Paid() ContractPaidEvent
+	Failed() ContractFailedEvent
 	JobCreated(*model.Job) BacalhauJobRunningEvent
 }
 
@@ -59,7 +65,7 @@ type BacalhauJobRunningEvent interface {
 	JobID() string
 
 	Completed() BacalhauJobCompletedEvent
-	Failed() BacalhauJobFailedEvent
+	JobError() BacalhauJobFailedEvent
 }
 
 type BacalhauJobCompletedEvent interface {
@@ -67,6 +73,8 @@ type BacalhauJobCompletedEvent interface {
 	Retryable
 
 	BacalhauJobRunningEvent
+
+	Paid() ContractPaidEvent
 }
 
 type BacalhauJobFailedEvent interface {
@@ -74,6 +82,17 @@ type BacalhauJobFailedEvent interface {
 	Retryable
 
 	BacalhauJobRunningEvent
+
+	Retry() ContractSubmittedEvent
+}
+
+type ContractFailedEvent interface {
+	Event
+	Retryable
+
+	ContractSubmittedEvent
+
+	Refunded() ContractRefundedEvent
 }
 
 type ContractPaidEvent interface {
@@ -85,7 +104,7 @@ type ContractPaidEvent interface {
 type ContractRefundedEvent interface {
 	Event
 
-	ContractSubmittedEvent
+	ContractFailedEvent
 }
 
 type event struct {
@@ -160,7 +179,19 @@ func (e *event) Completed() BacalhauJobCompletedEvent {
 }
 
 // Records that a running Bacalhau job has failed.
-func (e *event) Failed() BacalhauJobFailedEvent {
+func (e *event) JobError() BacalhauJobFailedEvent {
+	e.state = OrderStateJobError
+	return e
+}
+
+func (e *event) Retry() ContractSubmittedEvent {
+	e.state = OrderStateSubmitted
+	e.AddAttempt()
+	return e
+}
+
+func (e *event) Failed() ContractFailedEvent {
+	e.state = OrderStateFailed
 	return e
 }
 

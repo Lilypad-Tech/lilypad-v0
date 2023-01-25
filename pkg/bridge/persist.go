@@ -109,3 +109,27 @@ func NewSQLiteRepository(ctx context.Context, path string) (Repository, error) {
 		retrieveEvents: retrieveEvents,
 	}, nil
 }
+
+func Reload[E Event](repo Repository, state OrderState) ([]E, error) {
+	events, err := repo.Reload(state)
+	if err != nil {
+		return nil, err
+	}
+
+	casts := make([]E, 0, len(events))
+	for _, event := range events {
+		casts = append(casts, event.(E))
+	}
+	return casts, nil
+}
+
+func ReloadToChan[E Event](repo Repository, state OrderState, out chan<- Event) error {
+	events, err := Reload[E](repo, state)
+	if err != nil {
+		return err
+	}
+	for _, event := range events {
+		out <- event
+	}
+	return nil
+}

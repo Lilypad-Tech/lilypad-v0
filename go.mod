@@ -10,7 +10,6 @@ require (
 	github.com/rs/zerolog v1.28.0
 	github.com/stretchr/testify v1.8.1
 	go.ptx.dk/multierrgroup v0.0.2
-	go.uber.org/multierr v1.9.0
 	golang.org/x/sync v0.1.0
 	modernc.org/sqlite v1.19.4
 )
@@ -290,6 +289,7 @@ require (
 	go.uber.org/atomic v1.10.0 // indirect
 	go.uber.org/dig v1.14.1 // indirect
 	go.uber.org/fx v1.17.1 // indirect
+	go.uber.org/multierr v1.9.0 // indirect
 	go.uber.org/zap v1.24.0 // indirect
 	go4.org v0.0.0-20201209231011-d4a079459e60 // indirect
 	golang.org/x/crypto v0.5.0 // indirect

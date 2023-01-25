@@ -15,24 +15,18 @@ func main() {
 	ctx := log.Logger.WithContext(context.Background())
 	zerolog.SetGlobalLevel(zerolog.DebugLevel)
 
-	immediateStop, immediateCancel := signal.NotifyContext(ctx, os.Kill)
-	gracefulStop, gracefulCancel := signal.NotifyContext(immediateStop, os.Interrupt)
-	defer gracefulCancel()
-	defer immediateCancel()
+	ctx, cancel := signal.NotifyContext(ctx, os.Interrupt)
+	defer cancel()
 
-	repo, err := bridge.NewSQLiteRepository(immediateStop, "cool.sqlite")
+	repo, err := bridge.NewSQLiteRepository(ctx, "cool.sqlite")
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err.Error())
 		return
 	}
 
-	workflow := bridge.Workflow{
-		Bacalhau: bridge.NewJobRunner(),
-		Contract: bridge.TimerContract(),
-		Repo:     repo,
-	}
+	workflow := bridge.NewWorkflow(bridge.NewJobRunner(), bridge.TimerContract(), repo)
 
-	err = workflow.Run(immediateStop, gracefulStop, immediateCancel)
+	err = workflow.Start(ctx)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err.Error())
 	}

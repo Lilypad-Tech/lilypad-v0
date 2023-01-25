@@ -110,7 +110,7 @@ func (runner *bacalhauRunner) FindCompleted(ctx context.Context, jobs []Bacalhau
 				completed = append(completed, j.Completed())
 			} else if ok, err := jobHasErrors(bacjob.Status.State); !ok || err != nil {
 				log.Ctx(ctx).Info().Err(err).Msg("Bacalhau job failed")
-				failed = append(failed, j.Failed())
+				failed = append(failed, j.JobError())
 			} else {
 				// This would be a programming error – we haven't taken account
 				// of the states properly.
@@ -128,7 +128,7 @@ func (runner *bacalhauRunner) FindCompleted(ctx context.Context, jobs []Bacalhau
 		// paying them...
 		if !found {
 			log.Ctx(ctx).Error().Msg("Bacalhau job not found")
-			failed = append(failed, j.Failed())
+			failed = append(failed, j.JobError())
 		}
 	}
 
@@ -159,7 +159,7 @@ var ErrorCreate RunnerCreateHandler = func(ctx context.Context, cse ContractSubm
 var SuccssfulFind RunnerFindCompletedHandler = func(ctx context.Context, jobs []BacalhauJobRunningEvent) ([]BacalhauJobCompletedEvent, []BacalhauJobFailedEvent) {
 	completed := []BacalhauJobCompletedEvent{}
 	for _, job := range jobs {
-		completed = append(completed, job.(BacalhauJobCompletedEvent))
+		completed = append(completed, job.Completed())
 	}
 	return completed, nil
 }
@@ -167,7 +167,7 @@ var SuccssfulFind RunnerFindCompletedHandler = func(ctx context.Context, jobs []
 var FailedFind RunnerFindCompletedHandler = func(ctx context.Context, jobs []BacalhauJobRunningEvent) ([]BacalhauJobCompletedEvent, []BacalhauJobFailedEvent) {
 	failed := []BacalhauJobFailedEvent{}
 	for _, job := range jobs {
-		failed = append(failed, job.(BacalhauJobFailedEvent))
+		failed = append(failed, job.JobError())
 	}
 	return nil, failed
 }

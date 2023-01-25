@@ -2,13 +2,13 @@ package bridge
 
 import (
 	"context"
-	"fmt"
+	"errors"
 	"time"
 
 	"github.com/go-co-op/gocron"
+	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"go.ptx.dk/multierrgroup"
-	"go.uber.org/multierr"
 )
 
 // A Workflow is an active component that runs the entire process of an order
@@ -33,280 +33,178 @@ type Workflow struct {
 	Bacalhau JobRunner
 	Contract SmartContract
 	Repo     Repository
+
+	scheduler *gocron.Scheduler
 }
 
-// Run the workflow: listen to the smart contract and process any orders that
-// come through.
-//
-// Run accepts two contexts. One will be used for the "plumbing" (components
-// that persist, retry, etc) and the other for the "actors" (components that
-// communicate with external services). If the actor context is cancelled,
-// actors will be allowed to finish their current operation before exiting. If
-// the plumbing context is cancelled, all actor operation will cease
-// immediately.
-//
-// Run will blocks until the plumbing context or actor context are cancelled.
-func (workflow *Workflow) Run(plumbCtx, actorCtx context.Context, plumbingCancel context.CancelFunc) (err error) {
-	var actors, plumbing multierrgroup.Group
-
-	// Listen to the smart contract for any submitted orders.
-	jobRequests := make(chan ContractSubmittedEvent, 1)
-	defer close(jobRequests)
-
-	actors.Go(func() error {
-		return workflow.Contract.Listen(actorCtx, jobRequests)
-	})
-
-	jobRequestsSaved := make(chan ContractSubmittedEvent, 256)
-	defer close(jobRequestsSaved)
-
-	plumbing.Go(func() error {
-		Persist(plumbCtx, jobRequests, workflow.Repo, jobRequestsSaved)
-		return nil
-	})
-
-	// If we fail to do something too many times, it's possible that the user's
-	// job is just unrunnable. So we will refund their job in that case.
-	jobsToRefund := make(chan ContractSubmittedEvent, 256)
-	defer close(jobsToRefund)
-
-	jobsRefunded := make(chan ContractRefundedEvent, 256)
-	defer close(jobsRefunded)
-
-	actors.Go(func() error {
-		ErrorActor(
-			log.Ctx(plumbCtx).With().Str("action", "Refund").Int("instance", 0).Logger().WithContext(plumbCtx),
-			log.Ctx(actorCtx).With().Str("action", "Refund").Int("instance", 0).Logger().WithContext(actorCtx),
-			jobsToRefund,
-			workflow.Contract.Refund,
-			jobsRefunded,
-			jobsToRefund, // TODO: apply retry back-off
-		)
-		return nil
-	})
-
-	jobsRefundedSaved := make(chan ContractRefundedEvent, 1)
-	defer close(jobsRefundedSaved)
-
-	plumbing.Go(func() error {
-		Persist(plumbCtx, jobsRefunded, workflow.Repo, jobsRefundedSaved)
-		return nil
-	})
-
-	plumbing.Go(func() error {
-		Discard(plumbCtx, jobsRefundedSaved)
-		return nil
-	})
-
-	// When a order is submitted, kick-off a Bacalhau job to run it. We use
-	// three actors so that we can handle lots of contracts coming in at once.
-	// If we fail to create a job, retry it up to 5 times before giving up.
-	jobsInProgress := make(chan BacalhauJobRunningEvent, 256)
-	defer close(jobsInProgress)
-
-	jobsToRetryCreate := make(chan ContractSubmittedEvent, 256)
-	defer close(jobsToRetryCreate)
-
-	for i := 3; i > 0; i-- {
-		inst := i
-		actors.Go(func() error {
-			ErrorActor(
-				log.Ctx(plumbCtx).With().Str("action", "CreateJob").Int("instance", inst).Logger().WithContext(plumbCtx),
-				log.Ctx(actorCtx).With().Str("action", "CreateJob").Int("instance", inst).Logger().WithContext(actorCtx),
-				jobRequestsSaved,
-				workflow.Bacalhau.Create,
-				jobsInProgress,
-				jobsToRetryCreate,
-			)
-			return nil
-		})
+func NewWorkflow(jr JobRunner, sc SmartContract, repo Repository) *Workflow {
+	return &Workflow{
+		Bacalhau:  jr,
+		Contract:  sc,
+		Repo:      repo,
+		scheduler: gocron.NewScheduler(time.UTC),
 	}
+}
 
-	plumbing.Go(func() error {
-		ctx := log.Ctx(plumbCtx).With().Str("action", "Retry:CreateJob").Logger().WithContext(plumbCtx)
-		Retry(ctx, 5, jobsToRetryCreate, jobRequestsSaved, jobsToRefund)
-		return nil
-	})
+var maxAttemptsByState map[OrderState]int = map[OrderState]int{
+	OrderStateSubmitted: 5,
+	OrderStateRunning:   0,
+	OrderStateCompleted: 5,
+	OrderStateJobError:  3,
+	OrderStateFailed:    5,
+	OrderStatePaid:      0,
+	OrderStateRefunded:  0,
+}
 
-	jobsInProgressSaved := make(chan BacalhauJobRunningEvent, 1)
-	defer close(jobsInProgressSaved)
+var jobCheckInterval time.Duration = 5 * time.Second
 
-	plumbing.Go(func() error {
-		Persist(plumbCtx, jobsInProgress, workflow.Repo, jobsInProgressSaved)
-		return nil
-	})
+func (workflow *Workflow) Start(ctx context.Context) error {
+	wg := multierrgroup.Group{}
 
-	// For now, until we have some persistence, just pass the job we created
-	// straight onto the completion stage. Once we have persistence, we can just
-	// load the current list of jobs every time.
-	jobBatchesInProgress := make(chan []BacalhauJobRunningEvent, 256)
-	defer close(jobBatchesInProgress)
+	submittedEvents := make(chan ContractSubmittedEvent)
+	defer close(submittedEvents)
+	newEvents := make(chan Event, 256)
+	defer close(newEvents)
 
-	plumbing.Go(func() error {
-		Actor(
-			log.Ctx(plumbCtx).With().Str("action", "FetchJob").Int("instance", 0).Logger().WithContext(plumbCtx),
-			log.Ctx(actorCtx).With().Str("action", "FetchJob").Int("instance", 0).Logger().WithContext(actorCtx),
-			jobsInProgressSaved,
-			func(ctx context.Context, bjre BacalhauJobRunningEvent) []BacalhauJobRunningEvent {
-				return []BacalhauJobRunningEvent{bjre}
-			},
-			jobBatchesInProgress,
-		)
-		return nil
-	})
+	wg.Go(func() error { return workflow.Run(ctx, newEvents) })
+	wg.Go(func() error { return workflow.Contract.Listen(ctx, submittedEvents) })
 
-	// Every five seconds, check that status of all of our Bacalhau jobs. Doing
-	// it this way allows the system to be minimise the number of Bacalhau API
-	// calls. For any jobs that have failed, try to run them again.
-	scheduler := gocron.NewScheduler(time.UTC)
-	scheduler.SetMaxConcurrentJobs(1, gocron.WaitMode)
 	go func() {
-		scheduler.StartAsync()
-		defer scheduler.Stop()
-		<-plumbCtx.Done()
+		for {
+			select {
+			case e := <-submittedEvents:
+				newEvents <- e
+			case <-ctx.Done():
+				return
+			}
+		}
 	}()
 
-	fetchJobs := func() { Fetch(plumbCtx, workflow.Repo, OrderStateRunning, jobBatchesInProgress) }
-	_, err = scheduler.Every(5).Seconds().Do(fetchJobs)
+	wg.Go(func() error {
+		workflow.scheduler.StartAsync()
+		<-ctx.Done()
+		workflow.scheduler.Stop()
+		workflow.scheduler.Clear()
+		return nil
+	})
+
+	_, err := workflow.scheduler.Every(jobCheckInterval).Do(func() {
+		workflow.CheckRunningEvents(ctx, newEvents)
+	})
 	if err != nil {
 		return err
 	}
 
-	jobBatchesCompleted := make(chan []BacalhauJobCompletedEvent, 256)
-	defer close(jobBatchesCompleted)
-
-	jobBatchesFailed := make(chan []BacalhauJobFailedEvent, 16)
-	defer close(jobBatchesFailed)
-
-	actors.Go(func() error {
-		TwoActor(
-			log.Ctx(actorCtx).With().Str("action", "FindCompleted").Int("instance", 0).Logger().WithContext(actorCtx),
-			log.Ctx(plumbCtx).With().Str("action", "FindCompleted").Int("instance", 0).Logger().WithContext(plumbCtx),
-			jobBatchesInProgress,
-			workflow.Bacalhau.FindCompleted,
-			jobBatchesCompleted,
-			jobBatchesFailed,
-		)
-		return nil
+	wg.Go(func() error {
+		return ReloadToChan[ContractSubmittedEvent](workflow.Repo, OrderStateSubmitted, newEvents)
+	})
+	wg.Go(func() error {
+		return ReloadToChan[ContractFailedEvent](workflow.Repo, OrderStateFailed, newEvents)
+	})
+	wg.Go(func() error {
+		return ReloadToChan[BacalhauJobCompletedEvent](workflow.Repo, OrderStateCompleted, newEvents)
+	})
+	wg.Go(func() error {
+		return ReloadToChan[BacalhauJobFailedEvent](workflow.Repo, OrderStateJobError, newEvents)
 	})
 
-	jobsCompleted := make(chan BacalhauJobCompletedEvent, 256)
-	defer close(jobsCompleted)
-
-	plumbing.Go(func() error {
-		Flatten(plumbCtx, jobBatchesCompleted, jobsCompleted)
-		return nil
-	})
-
-	jobsFailed := make(chan BacalhauJobFailedEvent, 256)
-	defer close(jobsFailed)
-
-	plumbing.Go(func() error {
-		Flatten(plumbCtx, jobBatchesFailed, jobsFailed)
-		return nil
-	})
-
-	retryableJobs := make(chan BacalhauJobFailedEvent)
-	plumbing.Go(func() error {
-		Actor(plumbCtx, actorCtx, retryableJobs, func(ctx context.Context, e BacalhauJobFailedEvent) ContractSubmittedEvent {
-			return e
-		}, jobRequests)
-		return nil
-	})
-
-	refundableJobs := make(chan BacalhauJobFailedEvent)
-	plumbing.Go(func() error {
-		Actor(plumbCtx, actorCtx, refundableJobs, func(ctx context.Context, e BacalhauJobFailedEvent) ContractSubmittedEvent {
-			return e
-		}, jobsToRefund)
-		return nil
-	})
-
-	plumbing.Go(func() error {
-		ctx := log.Ctx(plumbCtx).With().Str("action", "Retry:FindCompleted").Logger().WithContext(plumbCtx)
-		Retry(ctx, 3, jobsFailed, retryableJobs, refundableJobs)
-		return nil
-	})
-
-	jobsCompletedSaved := make(chan BacalhauJobCompletedEvent, 1)
-	plumbing.Go(func() error {
-		Persist(plumbCtx, jobsCompleted, workflow.Repo, jobsCompletedSaved)
-		return nil
-	})
-
-	// For jobs that have completed, send them back to the smart contract for payment.
-	jobsPaid := make(chan ContractPaidEvent, 1)
-	defer close(jobsPaid)
-
-	jobsFailedToPay := make(chan BacalhauJobCompletedEvent, 256)
-	defer close(jobsFailedToPay)
-
-	actors.Go(func() error {
-		ErrorActor(
-			log.Ctx(actorCtx).With().Str("action", "Payment").Int("instance", 0).Logger().WithContext(actorCtx),
-			log.Ctx(plumbCtx).With().Str("action", "Payment").Int("instance", 0).Logger().WithContext(plumbCtx),
-			jobsCompletedSaved,
-			workflow.Contract.Complete,
-			jobsPaid,
-			jobsFailedToPay,
-		)
-		return nil
-	})
-
-	jobsFailedToPayToRefund := make(chan BacalhauJobCompletedEvent, 1)
-	plumbing.Go(func() error {
-		Actor(plumbCtx, actorCtx, jobsFailedToPayToRefund, func(ctx context.Context, e BacalhauJobCompletedEvent) ContractSubmittedEvent {
-			return e
-		}, jobsToRefund)
-		return nil
-	})
-
-	plumbing.Go(func() error {
-		Retry(plumbCtx, 20, jobsFailedToPay, jobsCompleted, jobsFailedToPayToRefund)
-		return nil
-	})
-
-	jobsPaidSaved := make(chan ContractPaidEvent, 256)
-	defer close(jobsPaidSaved)
-
-	plumbing.Go(func() error {
-		Persist(plumbCtx, jobsPaid, workflow.Repo, jobsPaidSaved)
-		return nil
-	})
-
-	plumbing.Go(func() error {
-		Discard(plumbCtx, jobsPaidSaved)
-		return nil
-	})
-
-	// All the pipes are set up! Now put the events in the database back into
-	// the pipes in the right places.
-	plumbing.Go(func() error { return reload(workflow.Repo, OrderStateSubmitted, jobRequestsSaved) })
-	plumbing.Go(func() error { return reload(workflow.Repo, OrderStateCompleted, jobsCompleted) })
-
-	log.Ctx(actorCtx).Info().Msg("Ready")
-	defer log.Ctx(actorCtx).Info().Msg("Shutdown")
-
-	// Sit and wait on the actors. If they exit, then the graceful shutdown
-	// context has been triggered, so now shutdown the plumbing.
-	err = actors.Wait()
-	plumbingCancel()
-	return multierr.Combine(err, plumbing.Wait())
+	return wg.Wait()
 }
 
-func reload[E Event](repo Repository, state OrderState, pipe chan<- E) error {
-	events, err := repo.Reload(state)
-	if err != nil {
-		return err
+func (workflow *Workflow) Run(ctx context.Context, newEvents <-chan Event) error {
+	processedEvents := make(chan Event, 256)
+
+	for {
+		var result Event
+		select {
+		case event := <-processedEvents:
+			result = workflow.ProcessEvent(ctx, event)
+		case event := <-newEvents:
+			result = workflow.ProcessEvent(ctx, event)
+		case <-ctx.Done():
+			return nil
+		}
+
+		if result != nil {
+			processedEvents <- result
+		}
+	}
+}
+
+func (workflow *Workflow) ProcessEvent(ctx context.Context, event Event) (result Event) {
+	var err error
+	log.Ctx(ctx).Trace().Stringer("id", event.OrderId()).Stringer("state", event.OrderState()).Msg("Process event")
+
+	currentState := event.OrderState()
+	switch currentState {
+	case OrderStateSubmitted:
+		result, err = workflow.Bacalhau.Create(ctx, event.(ContractSubmittedEvent))
+	case OrderStateCompleted:
+		result, err = workflow.Contract.Complete(ctx, event.(BacalhauJobCompletedEvent))
+	case OrderStateJobError:
+		event := event.(BacalhauJobFailedEvent)
+		if workflow.ShouldRetry(event) {
+			result = event.Retry()
+		} else {
+			result = event.Failed()
+		}
+	case OrderStateFailed:
+		result, err = workflow.Contract.Refund(ctx, event.(ContractFailedEvent))
+	default:
+		result = nil
 	}
 
-	for _, event := range events {
-		if casted, ok := event.(E); !ok {
-			return fmt.Errorf("failed to cast %T to Event interface", event)
+	if err != nil && !errors.Is(err, context.Canceled) {
+		// The processing action failed. If we can retry the action, do that,
+		// else if we are beyond our limit send the order for a refund.
+		if e, retryable := event.(Retryable); retryable && workflow.ShouldRetry(e) {
+			e.AddAttempt()
+			result = e // TODO: retry back off
 		} else {
-			pipe <- casted
+			result = event.(ContractSubmittedEvent).Failed()
 		}
 	}
 
-	return nil
+	// If we have a non-nil result, we are changing the state of something. So
+	// save the new state.
+	if result != nil {
+		saveError := workflow.Repo.Save(result)
+		log.Ctx(ctx).WithLevel(level(saveError)).
+			Err(saveError).
+			Stringer("oldState", currentState).
+			Stringer("newState", result.OrderState()).
+			Msg("Saving result")
+	}
+
+	return
+}
+
+func (workflow *Workflow) CheckRunningEvents(ctx context.Context, out chan<- Event) {
+	jobs, err := Reload[BacalhauJobRunningEvent](workflow.Repo, OrderStateRunning)
+	log.Ctx(ctx).WithLevel(level(err)).Err(err).Int("count", len(jobs)).Msg("Reloaded running events")
+
+	completed, failed := workflow.Bacalhau.FindCompleted(ctx, jobs)
+	log.Ctx(ctx).Debug().
+		Int("completed", len(completed)).
+		Int("failed", len(failed)).
+		Msg("Queried Bacalhau job status")
+
+	for _, event := range completed {
+		out <- event
+	}
+	for _, event := range failed {
+		out <- event
+	}
+}
+
+func (w *Workflow) ShouldRetry(event Retryable) bool {
+	return event.Attempts() < maxAttemptsByState[event.OrderState()]
+}
+
+func level(err error) zerolog.Level {
+	if err == nil {
+		return zerolog.DebugLevel
+	} else {
+		return zerolog.ErrorLevel
+	}
 }

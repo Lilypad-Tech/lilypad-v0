@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/system"
 	"github.com/stretchr/testify/suite"
 	"golang.org/x/sync/errgroup"
@@ -32,6 +33,7 @@ func TestWorkflowSuite(t *testing.T) {
 func (suite *WorkflowTestSuite) SetupSuite() {
 	suite.NoError(system.InitConfigForTesting(suite.T()))
 	GlobalRetryStrategy = Immediate
+	jobCheckInterval = 20 * time.Millisecond
 }
 
 func (suite *WorkflowTestSuite) SetupTest() {
@@ -44,7 +46,7 @@ func (suite *WorkflowTestSuite) SetupTest() {
 
 func (suite *WorkflowTestSuite) RunWorkflow(w *Workflow) {
 	suite.workflowGroup.Go(func() error {
-		return w.Run(suite.workflowCtx, suite.workflowCtx, suite.workflowCancel)
+		return w.Start(suite.workflowCtx)
 	})
 }
 
@@ -80,7 +82,7 @@ func (suite *WorkflowTestSuite) ErrorComplete() ContractCompleteHandler {
 }
 
 func (suite *WorkflowTestSuite) SuccessfulRefund() ContractRefundHandler {
-	return func(ctx context.Context, cse ContractSubmittedEvent) (ContractRefundedEvent, error) {
+	return func(ctx context.Context, cse ContractFailedEvent) (ContractRefundedEvent, error) {
 		suite.refunded <- cse.Refunded()
 		return cse.Refunded(), nil
 	}
@@ -93,21 +95,27 @@ func (suite *WorkflowTestSuite) EmitOne(e ContractSubmittedEvent) ContractListen
 	}
 }
 
+func (suite *WorkflowTestSuite) EmitNone() ContractListenHandler {
+	return func(ctx context.Context, c chan<- ContractSubmittedEvent) error {
+		return nil
+	}
+}
+
 func (suite *WorkflowTestSuite) TestHappyPath() {
 	e := exampleEvent()
 
-	suite.RunWorkflow(&Workflow{
-		Bacalhau: &mockRunner{
+	suite.RunWorkflow(NewWorkflow(
+		&mockRunner{
 			CreateHandler:        SuccessfulCreate,
 			FindCompletedHandler: SuccssfulFind,
 		},
-		Contract: &mockContract{
+		&mockContract{
 			CompleteHandler: suite.SuccessfulComplete(),
 			RefundHandler:   suite.SuccessfulRefund(),
 			ListenHandler:   suite.EmitOne(e),
 		},
-		Repo: suite.Repository(),
-	})
+		suite.Repository(),
+	))
 
 	select {
 	case result := <-suite.completed:
@@ -119,53 +127,92 @@ func (suite *WorkflowTestSuite) TestHappyPath() {
 	}
 }
 
-func (suite *WorkflowTestSuite) TestRefundsOnFail() {
+func (suite *WorkflowTestSuite) RefundOnFailTest(
+	create RunnerCreateHandler,
+	find RunnerFindCompletedHandler,
+	complete ContractCompleteHandler,
+) {
 	e := exampleEvent()
+	w := NewWorkflow(
+		&mockRunner{
+			CreateHandler:        create,
+			FindCompletedHandler: find,
+		},
+		&mockContract{
+			CompleteHandler: complete,
+			RefundHandler:   suite.SuccessfulRefund(),
+			ListenHandler:   suite.EmitOne(e),
+		},
+		suite.Repository(),
+	)
 
-	runner := &mockRunner{
-		CreateHandler:        SuccessfulCreate,
-		FindCompletedHandler: SuccssfulFind,
+	suite.RunWorkflow(w)
+
+	select {
+	case <-suite.completed:
+		suite.Fail("Should not have got a completed event")
+	case result := <-suite.refunded:
+		suite.Equal(e.OrderId(), result.OrderId())
+	case <-suite.Timeout():
+		suite.Fail("Timed out")
 	}
-	contract := &mockContract{
-		CompleteHandler: suite.SuccessfulComplete(),
-		RefundHandler:   suite.SuccessfulRefund(),
-		ListenHandler:   suite.EmitOne(e),
+}
+
+func (suite *WorkflowTestSuite) TestCreateRefunded() {
+	suite.RefundOnFailTest(ErrorCreate, SuccssfulFind, suite.SuccessfulComplete())
+}
+
+func (suite *WorkflowTestSuite) TestFindCompletedRefunded() {
+	suite.RefundOnFailTest(SuccessfulCreate, FailedFind, suite.SuccessfulComplete())
+}
+
+func (suite *WorkflowTestSuite) TestPaidRefunded() {
+	suite.RefundOnFailTest(SuccessfulCreate, SuccssfulFind, suite.ErrorComplete())
+}
+
+func (suite *WorkflowTestSuite) ReloadEventTest(event Event) {
+	repo := suite.Repository()
+	suite.NoError(repo.Save(event))
+
+	suite.RunWorkflow(NewWorkflow(
+		&mockRunner{
+			CreateHandler:        SuccessfulCreate,
+			FindCompletedHandler: SuccssfulFind,
+		},
+		&mockContract{
+			CompleteHandler: suite.SuccessfulComplete(),
+			RefundHandler:   suite.SuccessfulRefund(),
+			ListenHandler:   suite.EmitNone(),
+		},
+		repo,
+	))
+
+	select {
+	case e := <-suite.completed:
+		suite.Equal(event.OrderId(), e.OrderId())
+	case e := <-suite.refunded:
+		suite.Equal(event.OrderId(), e.OrderId())
+	case <-suite.Timeout():
+		suite.Fail("Timed out")
 	}
+}
 
-	runTest := func(w *Workflow) {
-		suite.RunWorkflow(w)
+func (suite *WorkflowTestSuite) TestSubmittedEventsAreReloaded() {
+	suite.ReloadEventTest(exampleEvent())
+}
 
-		select {
-		case <-suite.completed:
-			suite.Fail("Should not have got a completed event")
-		case result := <-suite.refunded:
-			suite.Equal(e.OrderId(), result.OrderId())
-		case <-suite.Timeout():
-			suite.Fail("Timed out")
-		}
-	}
+func (suite *WorkflowTestSuite) TestRunningEventsAreReloaded() {
+	suite.ReloadEventTest(exampleEvent().JobCreated(model.NewJob()))
+}
 
-	suite.Run("Create", func() {
-		suite.SetupTest()
-		runner.CreateHandler = ErrorCreate
-		runTest(&Workflow{Bacalhau: runner, Contract: contract, Repo: suite.Repository()})
-		runner.CreateHandler = SuccessfulCreate
-		suite.TearDownTest()
-	})
+func (suite *WorkflowTestSuite) TestCompletedEventsAreReloaded() {
+	suite.ReloadEventTest(exampleEvent().JobCreated(model.NewJob()).Completed())
+}
 
-	suite.Run("FindCompleted", func() {
-		suite.SetupTest()
-		runner.FindCompletedHandler = FailedFind
-		runTest(&Workflow{Bacalhau: runner, Contract: contract, Repo: suite.Repository()})
-		runner.FindCompletedHandler = SuccssfulFind
-		suite.TearDownTest()
-	})
+func (suite *WorkflowTestSuite) TestErroredEventsAreReloaded() {
+	suite.ReloadEventTest(exampleEvent().JobCreated(model.NewJob()).JobError())
+}
 
-	suite.Run("Paid", func() {
-		suite.SetupTest()
-		contract.CompleteHandler = suite.ErrorComplete()
-		runTest(&Workflow{Bacalhau: runner, Contract: contract, Repo: suite.Repository()})
-		contract.CompleteHandler = suite.SuccessfulComplete()
-		suite.TearDownTest()
-	})
+func (suite *WorkflowTestSuite) TestFailedEventsAreReloaded() {
+	suite.ReloadEventTest(exampleEvent().JobCreated(model.NewJob()).Failed())
 }

@@ -16,11 +16,11 @@ type SmartContract interface {
 
 	Complete(context.Context, BacalhauJobCompletedEvent) (ContractPaidEvent, error)
 
-	Refund(context.Context, ContractSubmittedEvent) (ContractRefundedEvent, error)
+	Refund(context.Context, ContractFailedEvent) (ContractRefundedEvent, error)
 }
 
 type ContractCompleteHandler func(context.Context, BacalhauJobCompletedEvent) (ContractPaidEvent, error)
-type ContractRefundHandler func(context.Context, ContractSubmittedEvent) (ContractRefundedEvent, error)
+type ContractRefundHandler func(context.Context, ContractFailedEvent) (ContractRefundedEvent, error)
 type ContractListenHandler func(ctx context.Context, c chan<- ContractSubmittedEvent) error
 
 type mockContract struct {
@@ -75,7 +75,7 @@ func exampleEvent() ContractSubmittedEvent {
 }
 
 // Refund implements SmartContract
-func (mock mockContract) Refund(ctx context.Context, e ContractSubmittedEvent) (ContractRefundedEvent, error) {
+func (mock mockContract) Refund(ctx context.Context, e ContractFailedEvent) (ContractRefundedEvent, error) {
 	log.Ctx(ctx).Info().Stringer("id", e.OrderId()).Msg("Refunded")
 	if mock.RefundHandler != nil {
 		return mock.RefundHandler(ctx, e)
