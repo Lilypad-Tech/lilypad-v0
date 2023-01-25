@@ -34,29 +34,26 @@ type Workflow struct {
 	Contract SmartContract
 	Repo     Repository
 
-	scheduler *gocron.Scheduler
+	scheduler        *gocron.Scheduler
+	getRetryTime     RetryStrategy
+	jobCheckInterval time.Duration
 }
+
+var (
+	defaultJobCheckInterval time.Duration = 5 * time.Second
+	defaultRetryStrategy    RetryStrategy = Exponential
+)
 
 func NewWorkflow(jr JobRunner, sc SmartContract, repo Repository) *Workflow {
 	return &Workflow{
-		Bacalhau:  jr,
-		Contract:  sc,
-		Repo:      repo,
-		scheduler: gocron.NewScheduler(time.UTC),
+		Bacalhau:         jr,
+		Contract:         sc,
+		Repo:             repo,
+		scheduler:        gocron.NewScheduler(time.UTC),
+		getRetryTime:     defaultRetryStrategy,
+		jobCheckInterval: defaultJobCheckInterval,
 	}
 }
-
-var maxAttemptsByState map[OrderState]int = map[OrderState]int{
-	OrderStateSubmitted: 5,
-	OrderStateRunning:   0,
-	OrderStateCompleted: 5,
-	OrderStateJobError:  3,
-	OrderStateFailed:    5,
-	OrderStatePaid:      0,
-	OrderStateRefunded:  0,
-}
-
-var jobCheckInterval time.Duration = 5 * time.Second
 
 func (workflow *Workflow) Start(ctx context.Context) error {
 	wg := multierrgroup.Group{}
@@ -88,8 +85,8 @@ func (workflow *Workflow) Start(ctx context.Context) error {
 		return nil
 	})
 
-	_, err := workflow.scheduler.Every(jobCheckInterval).Do(func() {
-		workflow.CheckRunningEvents(ctx, newEvents)
+	_, err := workflow.scheduler.Every(workflow.jobCheckInterval).Do(func() {
+		workflow.checkRunningEvents(ctx, newEvents)
 	})
 	if err != nil {
 		return err
@@ -112,26 +109,43 @@ func (workflow *Workflow) Start(ctx context.Context) error {
 }
 
 func (workflow *Workflow) Run(ctx context.Context, newEvents <-chan Event) error {
+func (workflow *Workflow) Run(ctx context.Context, newEvents <-chan Event) (err error) {
 	processedEvents := make(chan Event, 256)
 
 	for {
 		var result Event
+		var wait time.Duration
 		select {
 		case event := <-processedEvents:
-			result = workflow.ProcessEvent(ctx, event)
+			result, wait = workflow.ProcessEvent(ctx, event)
 		case event := <-newEvents:
-			result = workflow.ProcessEvent(ctx, event)
+			result, wait = workflow.ProcessEvent(ctx, event)
 		case <-ctx.Done():
-			return nil
+			return
 		}
 
-		if result != nil {
+		if result != nil && wait == 0 {
+			// We got an event result, so put it back on the queue to be
+			// processed into the next state.
 			processedEvents <- result
+		} else if result != nil && wait > 0 {
+			// The result has come with a wait time. Ask the scheduler to put
+			// the result back on the queue after the wait time has elapsed.
+			_, err = workflow.scheduler.WaitForSchedule().
+				Every(1).
+				LimitRunsTo(1).
+				StartAt(time.Now().Add(wait)).
+				Do(func() {
+					processedEvents <- result
+				})
+		}
+
+		if err != nil {
+			log.Ctx(ctx).Error().Err(err).Send()
 		}
 	}
 }
 
-func (workflow *Workflow) ProcessEvent(ctx context.Context, event Event) (result Event) {
 	var err error
 	log.Ctx(ctx).Trace().Stringer("id", event.OrderId()).Stringer("state", event.OrderState()).Msg("Process event")
 
@@ -143,7 +157,7 @@ func (workflow *Workflow) ProcessEvent(ctx context.Context, event Event) (result
 		result, err = workflow.Contract.Complete(ctx, event.(BacalhauJobCompletedEvent))
 	case OrderStateJobError:
 		event := event.(BacalhauJobFailedEvent)
-		if workflow.ShouldRetry(event) {
+		if ShouldRetry(event) {
 			result = event.Retry()
 		} else {
 			result = event.Failed()
@@ -157,9 +171,10 @@ func (workflow *Workflow) ProcessEvent(ctx context.Context, event Event) (result
 	if err != nil && !errors.Is(err, context.Canceled) {
 		// The processing action failed. If we can retry the action, do that,
 		// else if we are beyond our limit send the order for a refund.
-		if e, retryable := event.(Retryable); retryable && workflow.ShouldRetry(e) {
+		if e, retryable := event.(Retryable); retryable && ShouldRetry(e) {
 			e.AddAttempt()
-			result = e // TODO: retry back off
+			result = e
+			wait = workflow.getRetryTime(e)
 		} else {
 			result = event.(ContractSubmittedEvent).Failed()
 		}
@@ -195,10 +210,6 @@ func (workflow *Workflow) CheckRunningEvents(ctx context.Context, out chan<- Eve
 	for _, event := range failed {
 		out <- event
 	}
-}
-
-func (w *Workflow) ShouldRetry(event Retryable) bool {
-	return event.Attempts() < maxAttemptsByState[event.OrderState()]
 }
 
 func level(err error) zerolog.Level {

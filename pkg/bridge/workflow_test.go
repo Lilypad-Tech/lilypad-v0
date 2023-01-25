@@ -32,8 +32,8 @@ func TestWorkflowSuite(t *testing.T) {
 
 func (suite *WorkflowTestSuite) SetupSuite() {
 	suite.NoError(system.InitConfigForTesting(suite.T()))
-	GlobalRetryStrategy = Immediate
-	jobCheckInterval = 20 * time.Millisecond
+	defaultRetryStrategy = Immediate
+	defaultJobCheckInterval = 20 * time.Millisecond
 }
 
 func (suite *WorkflowTestSuite) SetupTest() {
