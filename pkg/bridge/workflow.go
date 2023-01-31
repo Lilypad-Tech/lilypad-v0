@@ -70,18 +70,7 @@ func (workflow *Workflow) Start(ctx context.Context) error {
 
 	wg.Go(func() error { return workflow.Run(ctx, newEvents) })
 	wg.Go(func() error { return workflow.Contract.Listen(ctx, submittedEvents) })
-
-	go func() {
-		for {
-			select {
-			case e := <-submittedEvents:
-				newEvents <- e
-			case <-ctx.Done():
-				return
-			}
-		}
-	}()
-
+	wg.Go(func() error { return workflow.deduplicateSubmittedEvents(ctx, submittedEvents, newEvents) })
 	wg.Go(func() error {
 		workflow.scheduler.StartAsync()
 		<-ctx.Done()
@@ -163,10 +152,12 @@ func (workflow *Workflow) Run(ctx context.Context, newEvents <-chan Event) (err 
 // be delayed until that time has elapsed.
 func (workflow *Workflow) ProcessEvent(ctx context.Context, event Event) (result Event, wait time.Duration) {
 	var err error
-	log.Ctx(ctx).Trace().
+	ctx = log.Ctx(ctx).With().
 		Stringer("id", event.OrderId()).
 		Stringer("state", event.OrderState()).
-		Msg("Process event")
+		Logger().WithContext(ctx)
+
+	log.Ctx(ctx).Trace().Msg("Process event")
 
 	currentState := event.OrderState()
 	switch currentState {
@@ -188,6 +179,8 @@ func (workflow *Workflow) ProcessEvent(ctx context.Context, event Event) (result
 	}
 
 	if err != nil && !errors.Is(err, context.Canceled) {
+		log.Ctx(ctx).Error().Err(err).Msg("Error processing event")
+
 		// The processing action failed. If we can retry the action, do that,
 		// else if we are beyond our limit send the order for a refund.
 		if e, retryable := event.(Retryable); retryable && ShouldRetry(e) {
@@ -239,5 +232,31 @@ func level(err error) zerolog.Level {
 		return zerolog.DebugLevel
 	} else {
 		return zerolog.ErrorLevel
+	}
+}
+
+func (workflow *Workflow) deduplicateSubmittedEvents(ctx context.Context, in <-chan ContractSubmittedEvent, out chan<- Event) (err error) {
+	for {
+		select {
+		case e := <-in:
+			var exists bool
+			exists, err = workflow.Repo.Exists(e)
+			if err != nil {
+				break
+			}
+			if exists {
+				log.Ctx(ctx).Debug().Stringer("id", e.OrderId()).Msg("Dropping new event because already seen")
+				continue
+			}
+
+			err = workflow.Repo.Save(e)
+			out <- e
+		case <-ctx.Done():
+			return
+		}
+
+		if err != nil {
+			log.Ctx(ctx).Error().Err(err)
+		}
 	}
 }

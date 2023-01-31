@@ -25,12 +25,15 @@ type Repository interface {
 	Save(Event) error
 
 	Reload(OrderState) ([]Event, error)
+
+	Exists(Event) (bool, error)
 }
 
 type sqlRepository struct {
 	db *sql.DB
 
 	insertEvent    *sql.Stmt
+	eventExists    *sql.Stmt
 	retrieveEvents *sql.Stmt
 }
 
@@ -77,6 +80,14 @@ func (repo *sqlRepository) Save(in Event) error {
 	return err
 }
 
+func (repo *sqlRepository) Exists(in Event) (bool, error) {
+	res, err := repo.eventExists.Query(sql.Named("orderId", in.OrderId()))
+	if err != nil {
+		return false, err
+	}
+	return res.Next(), nil
+}
+
 func NewSQLiteRepository(ctx context.Context, path string) (Repository, error) {
 	db, err := sql.Open("sqlite", path)
 	if err != nil {
@@ -98,6 +109,11 @@ func NewSQLiteRepository(ctx context.Context, path string) (Repository, error) {
 		return nil, err
 	}
 
+	eventExists, err := conn.PrepareContext(ctx, Query("event_exists"))
+	if err != nil {
+		return nil, err
+	}
+
 	retrieveEvents, err := conn.PrepareContext(ctx, Query("retrieve_events"))
 	if err != nil {
 		return nil, err
@@ -106,6 +122,7 @@ func NewSQLiteRepository(ctx context.Context, path string) (Repository, error) {
 	return &sqlRepository{
 		db:             db,
 		insertEvent:    insertEvent,
+		eventExists:    eventExists,
 		retrieveEvents: retrieveEvents,
 	}, nil
 }
