@@ -7,7 +7,7 @@ import (
 
 const defaultRetryTime = 5 * time.Second
 
-var maxAttemptsByState map[OrderState]int = map[OrderState]int{
+var maxAttemptsByState map[OrderState]uint = map[OrderState]uint{
 	OrderStateSubmitted: 5,
 	OrderStateRunning:   0,
 	OrderStateCompleted: 5,

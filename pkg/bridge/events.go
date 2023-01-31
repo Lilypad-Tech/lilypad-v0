@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"time"
 
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/google/uuid"
 )
 
 //go:generate stringer -type=OrderState --trimprefix=OrderState
@@ -34,15 +34,15 @@ func OrderStates() [7]OrderState {
 }
 
 type Event interface {
-	OrderId() uuid.UUID
+	OrderId() common.Hash
 	OrderState() OrderState
 }
 
 type Retryable interface {
 	Event
 
-	Attempts() int
-	AddAttempt() int
+	Attempts() uint
+	AddAttempt() uint
 	LastAttempt() time.Time
 }
 
@@ -108,9 +108,9 @@ type ContractRefundedEvent interface {
 }
 
 type event struct {
-	eventId     int
-	orderId     uuid.UUID
-	attempts    int
+	eventId     uint
+	orderId     []byte
+	attempts    uint
 	lastAttempt time.Time
 	state       OrderState
 	jobSpec     []byte
@@ -118,8 +118,8 @@ type event struct {
 }
 
 // The smart contract order ID.
-func (e *event) OrderId() uuid.UUID {
-	return e.orderId
+func (e *event) OrderId() common.Hash {
+	return common.BytesToHash(e.orderId)
 }
 
 func (e *event) OrderState() OrderState {
@@ -127,7 +127,7 @@ func (e *event) OrderState() OrderState {
 }
 
 // Log the event as being retried.
-func (e *event) AddAttempt() int {
+func (e *event) AddAttempt() uint {
 	e.attempts += 1
 	e.lastAttempt = time.Now()
 	return e.attempts
@@ -135,7 +135,7 @@ func (e *event) AddAttempt() int {
 
 // Returns the number of times we have tried to process the event and move it
 // into the next state.
-func (e *event) Attempts() int {
+func (e *event) Attempts() uint {
 	return e.attempts
 }
 

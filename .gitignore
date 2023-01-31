@@ -1,5 +1,7 @@
 *.sqlite
 *.env
+*.abi
+*.bin
 
 node_modules
 coverage

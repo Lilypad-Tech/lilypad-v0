@@ -1,6 +1,6 @@
 CREATE TABLE IF NOT EXISTS events (
     eventId     INTEGER PRIMARY KEY AUTOINCREMENT,
-	orderId     VARCHAR(16),
+	orderId     VARCHAR(32),
 	attempts    SMALLINT,
 	lastAttempt VARCHAR(25),
 	state       SMALLINT,
