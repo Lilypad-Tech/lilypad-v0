@@ -1,2 +1,12 @@
 *.sqlite
 *.env
+
+node_modules
+coverage
+coverage.json
+typechain
+typechain-types
+
+# Hardhat files
+cache
+# artifacts
