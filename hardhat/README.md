@@ -1,14 +1,16 @@
 # Lilypad
 
-Currently 2 contracts already deployed to FVM Hyperspace:
+Contract address for LilypadEvents.sol is 0xaB35C095Fea79Ee42eBF57146cE5FED99C094C49
+(changelog)
+
+Currently 2 LilypadEventsv0.sol contracts already deployed to FVM Hyperspace:
 0x4E5811CC840b9610580D64CDceDf25bCcD4a6D66 (has events already)
 0xaeFAfC4Ca86B0d638F053DA91787a558aCD51eB9 (clean deploy, no events)
 
 You need a .env file with your private key for a wallet to run this
 
-Contracts under /contracts
-ABI of compiled contracts under /artifacts (usually this folder goes in the .gitignore
-because you can make it by running `npx hardhat compile`)
+- Contracts under /contracts
+- ABI of compiled contracts under /artifacts (usually this folder goes in the .gitignore because you can make it by running `npx hardhat compile`)
 
 You can deploy this contract by being in this folder and typing
 
