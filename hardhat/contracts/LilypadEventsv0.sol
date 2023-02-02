@@ -8,7 +8,7 @@ error LilypadEventsError();
 /**
     @notice An experimental contract for POC work to call Bacalhau jobs from FVM smart contracts
 */
-contract LilypadEvents {
+contract LilypadEventsv0 {
     using Counters for Counters.Counter; // create job id's?
     Counters.Counter private _jobIds;
 
