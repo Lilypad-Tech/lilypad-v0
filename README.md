@@ -1,4 +1,4 @@
-# lilypad
+# 🌺🐸 lilypad
 A simple and lightweight FVM oracle using Bacalhau
 
 
