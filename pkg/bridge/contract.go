@@ -2,13 +2,16 @@ package bridge
 
 import (
 	"context"
+	"crypto/ecdsa"
 	"crypto/rand"
 	"encoding/json"
+	"math/big"
 	"time"
 
-	"github.com/bacalhau-project/lilypad/hardhat/contracts"
+	"github.com/bacalhau-project/lilypad/hardhat/artifacts/contracts/LilypadEvents.sol"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/go-co-op/gocron"
@@ -24,13 +27,57 @@ type SmartContract interface {
 }
 
 type realContract struct {
-	contract *contracts.Contracts
+	client     *ethclient.Client
+	contract   *LilypadEvents.LilypadEvents
+	privateKey *ecdsa.PrivateKey
 
 	maxSeenBlock uint64
 }
 
+func (r *realContract) publicKey() *ecdsa.PublicKey {
+	return r.privateKey.Public().(*ecdsa.PublicKey)
+}
+
+func (r *realContract) wallet() common.Address {
+	return crypto.PubkeyToAddress(*r.publicKey())
+}
+
+func (r *realContract) pendingNonce(ctx context.Context) (uint64, error) {
+	return r.client.PendingNonceAt(ctx, r.wallet())
+}
+
+func (r *realContract) prepareTransaction(ctx context.Context) (*bind.TransactOpts, error) {
+	nonce, err := r.pendingNonce(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	opts, err := bind.NewKeyedTransactorWithChainID(r.privateKey, big.NewInt(3141))
+	if err != nil {
+		return nil, err
+	}
+
+	opts.Nonce = big.NewInt(int64(nonce))
+	opts.Value = big.NewInt(0)
+	opts.GasLimit = 5e5
+	opts.Context = ctx
+
+	return opts, nil
+}
+
 // Complete implements SmartContract
 func (r *realContract) Complete(ctx context.Context, event BacalhauJobCompletedEvent) (ContractPaidEvent, error) {
+	opts, err := r.prepareTransaction(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	txn, err := r.contract.LilypadEventsTransactor.ReturnBacalhauResults(opts, opts.From, common.Big0, event.JobID(), "")
+	if err != nil {
+		return nil, err
+	}
+
+	log.Ctx(ctx).Debug().Stringer("txn", txn.Hash()).Msg("Results returned")
 	return event.Paid(), nil
 }
 
@@ -53,7 +100,7 @@ func (r *realContract) ReadLogs(ctx context.Context, out chan<- ContractSubmitte
 	log.Ctx(ctx).Debug().Uint64("fromBlock", r.maxSeenBlock+1).Msg("Polling for smart contract events")
 
 	opts := bind.FilterOpts{Start: uint64(r.maxSeenBlock + 1), Context: ctx}
-	logs, err := r.contract.ContractsFilterer.FilterNewBacalhauJobSubmitted(&opts, nil)
+	logs, err := r.contract.LilypadEventsFilterer.FilterNewBacalhauJobSubmitted(&opts, nil)
 	if err != nil {
 		log.Ctx(ctx).Error().Err(err).Send()
 		return
@@ -114,13 +161,13 @@ func (r *realContract) Refund(ctx context.Context, e ContractFailedEvent) (Contr
 	return e.Refunded(), nil
 }
 
-func NewContract(contractAddr common.Address) (SmartContract, error) {
+func NewContract(contractAddr common.Address, privateKey *ecdsa.PrivateKey) (SmartContract, error) {
 	client, err := ethclient.Dial("wss://ws-filecoin-hyperspace.chainstacklabs.com/rpc/v0")
 	if err != nil {
 		return nil, err
 	}
 
-	contract, err := contracts.NewContracts(contractAddr, client)
+	contract, err := LilypadEvents.NewLilypadEvents(contractAddr, client)
 	if err != nil {
 		return nil, err
 	}
@@ -130,7 +177,7 @@ func NewContract(contractAddr common.Address) (SmartContract, error) {
 		return nil, err
 	}
 
-	return &realContract{contract, number}, nil
+	return &realContract{client, contract, privateKey, number}, nil
 }
 
 type ContractCompleteHandler func(context.Context, BacalhauJobCompletedEvent) (ContractPaidEvent, error)

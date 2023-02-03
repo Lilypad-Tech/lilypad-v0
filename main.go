@@ -8,6 +8,7 @@ import (
 
 	"github.com/bacalhau-project/lilypad/pkg/bridge"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 )
@@ -25,8 +26,14 @@ func main() {
 		return
 	}
 
-	addr := common.HexToAddress("0xcD522E349958c22fB7406Fc7DaC911A2C289b72f")
-	contract, err := bridge.NewContract(addr)
+	addr := common.HexToAddress(os.Getenv("DEPLOYED_CONTRACT_ADDRESS"))
+	privKey, err := crypto.HexToECDSA(os.Getenv("WALLET_PRIVATE_KEY"))
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "WALLET_PRIVATE_KEY: "+err.Error())
+		return
+	}
+
+	contract, err := bridge.NewContract(addr, privKey)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err.Error())
 		return

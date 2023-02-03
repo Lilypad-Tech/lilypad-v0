@@ -2,6 +2,7 @@
 *.env
 *.abi
 *.bin
+lilypad
 
 node_modules
 coverage
