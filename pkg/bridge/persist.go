@@ -49,7 +49,19 @@ func (repo *sqlRepository) Reload(state OrderState) ([]Event, error) {
 	for rows.Next() {
 		var e event
 		var lastAttemptString string
-		err = rows.Scan(&e.eventId, &e.orderId, &e.attempts, &lastAttemptString, &e.state, &e.jobSpec, &e.jobId)
+		err = rows.Scan(
+			&e.eventId,
+			&e.orderId,
+			&e.orderOwner,
+			&e.orderNumber,
+			&e.orderName,
+			&e.attempts,
+			&lastAttemptString,
+			&e.state,
+			&e.jobSpec,
+			&e.jobId,
+			&e.jobResult,
+		)
 		if err != nil {
 			break
 		}
@@ -71,11 +83,15 @@ func (repo *sqlRepository) Save(in Event) error {
 	}
 	_, err := repo.insertEvent.Exec(
 		sql.Named("orderId", e.orderId),
+		sql.Named("orderOwner", e.orderOwner),
+		sql.Named("orderNumber", e.orderNumber),
+		sql.Named("orderName", e.orderName),
 		sql.Named("attempts", e.attempts),
 		sql.Named("lastAttempt", e.lastAttempt.Format(time.RFC3339)),
 		sql.Named("state", e.state),
 		sql.Named("jobSpec", e.jobSpec),
 		sql.Named("jobId", e.jobId),
+		sql.Named("jobResult", e.jobResult),
 	)
 	return err
 }

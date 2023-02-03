@@ -6,6 +6,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/filecoin-project/bacalhau/pkg/model"
+	"github.com/ipfs/go-cid"
 )
 
 //go:generate stringer -type=OrderState --trimprefix=OrderState
@@ -50,6 +51,9 @@ type ContractSubmittedEvent interface {
 	Event
 	Retryable
 
+	OrderNumber() int64
+	OrderName() string
+	OrderRequestor() common.Address
 	Spec() (model.Spec, error)
 
 	Failed() ContractFailedEvent
@@ -64,7 +68,7 @@ type BacalhauJobRunningEvent interface {
 
 	JobID() string
 
-	Completed() BacalhauJobCompletedEvent
+	Completed(cid.Cid) BacalhauJobCompletedEvent
 	JobError() BacalhauJobFailedEvent
 }
 
@@ -73,6 +77,8 @@ type BacalhauJobCompletedEvent interface {
 	Retryable
 
 	BacalhauJobRunningEvent
+
+	Result() cid.Cid
 
 	Paid() ContractPaidEvent
 }
@@ -110,11 +116,15 @@ type ContractRefundedEvent interface {
 type event struct {
 	eventId     uint
 	orderId     []byte
+	orderOwner  []byte
+	orderNumber int64
+	orderName   string
 	attempts    uint
 	lastAttempt time.Time
 	state       OrderState
 	jobSpec     []byte
 	jobId       string
+	jobResult   string
 }
 
 // The smart contract order ID.
@@ -124,6 +134,25 @@ func (e *event) OrderId() common.Hash {
 
 func (e *event) OrderState() OrderState {
 	return e.state
+}
+
+// OrderName implements BacalhauJobCompletedEvent
+func (e *event) OrderName() string {
+	return e.orderName
+}
+
+// OrderNumber implements BacalhauJobCompletedEvent
+func (e *event) OrderNumber() int64 {
+	return e.orderNumber
+}
+
+func (e *event) OrderRequestor() common.Address {
+	return common.BytesToAddress(e.orderOwner)
+}
+
+// Result implements BacalhauJobCompletedEvent
+func (e *event) Result() cid.Cid {
+	return cid.MustParse(e.jobResult)
 }
 
 // Log the event as being retried.
@@ -173,8 +202,9 @@ func (e *event) Spec() (spec model.Spec, err error) {
 }
 
 // Records that a running Bacalhau job has completed.
-func (e *event) Completed() BacalhauJobCompletedEvent {
+func (e *event) Completed(result cid.Cid) BacalhauJobCompletedEvent {
 	e.state = OrderStateCompleted
+	e.jobResult = result.String()
 	return e
 }
 

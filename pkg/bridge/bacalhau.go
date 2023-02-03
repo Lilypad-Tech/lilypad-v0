@@ -9,6 +9,7 @@ import (
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/requester/publicapi"
 	"github.com/filecoin-project/bacalhau/pkg/system"
+	"github.com/ipfs/go-cid"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 )
@@ -106,8 +107,32 @@ func (runner *bacalhauRunner) FindCompleted(ctx context.Context, jobs []Bacalhau
 			if ok, err := jobStillRunning(bacjob.Status.State); !ok || err != nil {
 				log.Ctx(ctx).Debug().Err(err).Msg("Bacalhau job still in progress")
 			} else if ok, err := jobComplete(bacjob.Status.State); ok && err == nil {
-				log.Ctx(ctx).Info().Err(err).Msg("Bacalhau job completed")
-				completed = append(completed, j.Completed())
+				results, err := runner.Client.GetResults(ctx, bacjob.Metadata.ID)
+				if err != nil {
+					log.Ctx(ctx).Error().Err(err).Msg("Unable to get job results")
+					continue
+				}
+
+				var resultCid cid.Cid
+				var foundResult bool = false
+				for _, result := range results {
+					if result.Data.CID != "" {
+						resultCid, err = cid.Parse(result.Data.CID)
+						if err != nil {
+							log.Ctx(ctx).Error().Str("cid", result.Data.CID).Err(err).Msg("Unable to parse result CID")
+							continue
+						}
+						foundResult = true
+					}
+				}
+
+				if foundResult {
+					log.Ctx(ctx).Info().Err(err).Msg("Bacalhau job completed")
+					completed = append(completed, j.Completed(resultCid))
+				} else {
+					log.Ctx(ctx).Error().Msg("No reuslts found for completed job")
+					failed = append(failed, j.JobError())
+				}
 			} else if ok, err := jobHasErrors(bacjob.Status.State); !ok || err != nil {
 				log.Ctx(ctx).Info().Err(err).Msg("Bacalhau job failed")
 				failed = append(failed, j.JobError())
@@ -159,7 +184,7 @@ var ErrorCreate RunnerCreateHandler = func(ctx context.Context, cse ContractSubm
 var SuccssfulFind RunnerFindCompletedHandler = func(ctx context.Context, jobs []BacalhauJobRunningEvent) ([]BacalhauJobCompletedEvent, []BacalhauJobFailedEvent) {
 	completed := []BacalhauJobCompletedEvent{}
 	for _, job := range jobs {
-		completed = append(completed, job.Completed())
+		completed = append(completed, job.Completed(cid.Cid{}))
 	}
 	return completed, nil
 }

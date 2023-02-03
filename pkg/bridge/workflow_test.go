@@ -9,6 +9,7 @@ import (
 
 	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/filecoin-project/bacalhau/pkg/system"
+	"github.com/ipfs/go-cid"
 	"github.com/stretchr/testify/suite"
 	"golang.org/x/sync/errgroup"
 )
@@ -206,7 +207,7 @@ func (suite *WorkflowTestSuite) TestRunningEventsAreReloaded() {
 }
 
 func (suite *WorkflowTestSuite) TestCompletedEventsAreReloaded() {
-	suite.ReloadEventTest(exampleEvent().JobCreated(model.NewJob()).Completed())
+	suite.ReloadEventTest(exampleEvent().JobCreated(model.NewJob()).Completed(cid.Cid{}))
 }
 
 func (suite *WorkflowTestSuite) TestErroredEventsAreReloaded() {

@@ -13,7 +13,6 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
-	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/go-co-op/gocron"
 	"github.com/rs/zerolog/log"
 )
@@ -59,7 +58,6 @@ func (r *realContract) prepareTransaction(ctx context.Context) (*bind.TransactOp
 
 	opts.Nonce = big.NewInt(int64(nonce))
 	opts.Value = big.NewInt(0)
-	opts.GasLimit = 5e5
 	opts.Context = ctx
 
 	return opts, nil
@@ -72,7 +70,13 @@ func (r *realContract) Complete(ctx context.Context, event BacalhauJobCompletedE
 		return nil, err
 	}
 
-	txn, err := r.contract.LilypadEventsTransactor.ReturnBacalhauResults(opts, opts.From, common.Big0, event.JobID(), "")
+	txn, err := r.contract.LilypadEventsTransactor.ReturnBacalhauResults(
+		opts,
+		event.OrderRequestor(),
+		event.OrderId().Big(),
+		event.OrderName(),
+		event.Result().String(),
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -120,36 +124,21 @@ func (r *realContract) ReadLogs(ctx context.Context, out chan<- ContractSubmitte
 			continue
 		}
 
-		spec, err := json.Marshal(model.Spec{
-			Engine:    model.EngineDocker,
-			Verifier:  model.VerifierNoop,
-			Publisher: model.PublisherIpfs,
-			Docker: model.JobSpecDocker{
-				Image:      "ghcr.io/bacalhau-project/examples/stable-diffusion-gpu:0.0.1",
-				Entrypoint: []string{"python", "main.py", "--o", "./outputs", "--p", recvEvent.Params},
-			},
-			Resources: model.ResourceUsageConfig{
-				GPU: "1",
-			},
-			Outputs: []model.StorageSpec{
-				{
-					Name: "outputs",
-					Path: "/outputs",
-				},
-			},
-			Deal: model.Deal{
-				Concurrency: 1,
-			},
-		})
+		specObj := fastSpec
+		specObj.Docker.Entrypoint = append(specObj.Docker.Entrypoint, recvEvent.Params)
+		spec, err := json.Marshal(specObj)
 		if err != nil {
 			log.Ctx(ctx).Error().Err(err).Send()
 			continue
 		}
 
 		out <- &event{
-			orderId: recvEvent.Raw.TxHash.Bytes(),
-			state:   OrderStateSubmitted,
-			jobSpec: spec,
+			orderId:     recvEvent.Raw.TxHash.Bytes(),
+			orderOwner:  recvEvent.RequestorContract.Bytes(),
+			orderNumber: recvEvent.JobId.Int64(),
+			orderName:   recvEvent.JobName,
+			state:       OrderStateSubmitted,
+			jobSpec:     spec,
 		}
 
 		r.maxSeenBlock = recvEvent.Raw.BlockNumber
@@ -211,18 +200,9 @@ func (mock mockContract) Listen(ctx context.Context, out chan<- ContractSubmitte
 }
 
 func exampleEvent() ContractSubmittedEvent {
-	spec, err := json.Marshal(model.Spec{
-		Engine:    model.EngineDocker,
-		Verifier:  model.VerifierNoop,
-		Publisher: model.PublisherEstuary,
-		Docker: model.JobSpecDocker{
-			Image:      "ubuntu",
-			Entrypoint: []string{"date"},
-		},
-		Deal: model.Deal{
-			Concurrency: 1,
-		},
-	})
+	spec := fastSpec
+	spec.Docker.Entrypoint = append(spec.Docker.Entrypoint, "test")
+	specJson, err := json.Marshal(spec)
 	if err != nil {
 		panic(err)
 	}
@@ -230,7 +210,7 @@ func exampleEvent() ContractSubmittedEvent {
 		attempts:    0,
 		lastAttempt: time.Time{},
 		state:       OrderStateSubmitted,
-		jobSpec:     spec,
+		jobSpec:     specJson,
 	}
 	id := make([]byte, 0, 32)
 	_, err = rand.Read(id)

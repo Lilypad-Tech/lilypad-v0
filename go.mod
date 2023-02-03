@@ -6,6 +6,7 @@ require (
 	github.com/ethereum/go-ethereum v1.10.26
 	github.com/filecoin-project/bacalhau v0.3.18
 	github.com/go-co-op/gocron v1.18.0
+	github.com/ipfs/go-cid v0.3.2
 	github.com/pkg/errors v0.9.1
 	github.com/rs/zerolog v1.28.0
 	github.com/stretchr/testify v1.8.1
@@ -51,7 +52,6 @@ require (
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.7.0 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/imdario/mergo v0.3.13 // indirect
-	github.com/ipfs/go-cid v0.3.2 // indirect
 	github.com/ipfs/go-log/v2 v2.5.1 // indirect
 	github.com/ipld/go-ipld-prime v0.19.0 // indirect
 	github.com/joho/godotenv v1.4.0 // indirect
