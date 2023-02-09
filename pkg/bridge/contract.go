@@ -73,7 +73,7 @@ func (r *realContract) Complete(ctx context.Context, event BacalhauJobCompletedE
 	txn, err := r.contract.LilypadEventsTransactor.ReturnBacalhauResults(
 		opts,
 		event.OrderRequestor(),
-		event.OrderId().Big(),
+		big.NewInt(event.OrderNumber()),
 		event.OrderName(),
 		event.Result().String(),
 	)
@@ -81,7 +81,7 @@ func (r *realContract) Complete(ctx context.Context, event BacalhauJobCompletedE
 		return nil, err
 	}
 
-	log.Ctx(ctx).Debug().Stringer("txn", txn.Hash()).Msg("Results returned")
+	log.Ctx(ctx).Info().Stringer("txn", txn.Hash()).Msg("Results returned")
 	return event.Paid(), nil
 }
 
@@ -124,7 +124,7 @@ func (r *realContract) ReadLogs(ctx context.Context, out chan<- ContractSubmitte
 			continue
 		}
 
-		specObj := fastSpec
+		specObj := stableDiffusionSpec
 		specObj.Docker.Entrypoint = append(specObj.Docker.Entrypoint, recvEvent.Params)
 		spec, err := json.Marshal(specObj)
 		if err != nil {
