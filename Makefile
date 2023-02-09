@@ -37,12 +37,12 @@ artifacts/%.json artifacts/%.dbg.json: %.sol ${HARDHAT}
 .PHONY: prepare
 prepare: ${ABIGEN} ${HARDHAT}
 
-CONTRACTS := $(shell find hardhat/contracts -name '*.sol')
+CONTRACTS := $(shell find hardhat/artifacts/contracts -name '*.sol')
 PACKAGES  := $(shell echo '${CONTRACTS}' | xargs -n1 basename -s .sol | tr ' ' "\n" | awk '{ print "hardhat/artifacts/contracts/" $$1 ".sol/" $$1 ".go" }')
-BINARY    := ./$(shell pwd | xargs basename)
+BINARY    := ./$(shell pwd | xargs basename)-${GOOS}-${GOARCH}
 
 ${BINARY}: ${PACKAGES} $(shell find pkg -name '*.go') main.go
-	go build .
+	go build -o ${BINARY} .
 
 .PHONY: build
 build: ${PACKAGES} ${BINARY}
