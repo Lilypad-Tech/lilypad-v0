@@ -2,24 +2,15 @@
 pragma solidity >=0.8.4;
 import "hardhat/console.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
-import "./LilypadInterface.sol";
 
 error LilypadEventsError();
 
 /**
     @notice An experimental contract for POC work to call Bacalhau jobs from FVM smart contracts
 */
-contract LilypadEvents {
+contract LilypadEventsv1 {
     using Counters for Counters.Counter; // create job id's?
     Counters.Counter private _jobIds;
-
-    //testing
-    struct BacalhauJobCalled {
-        address requestor;
-        uint jobId;
-        string jobName;
-        string params;
-    }
 
     struct BacalhauJob {
         address requestor;
@@ -29,7 +20,6 @@ contract LilypadEvents {
     }
 
     BacalhauJob[] public bacalhauJobHistory; //complete history of all jobs
-    BacalhauJobCalled[] public bacalhauJobCalledHistory;
     mapping(address => BacalhauJob[]) bacalhauJobsByAddress; // jobs by requestor
 
     event NewBacalhauJobSubmitted(
@@ -49,17 +39,9 @@ contract LilypadEvents {
     }
 
     //msg.sender is always the address where the current (external) function call came from.
-    //need interface for different jobs available to verify params before sending
-    function runBacalhauJob(address _from, string memory _jobName, string memory _params) public {
+    function runBacalhauJob(address _from, string memory _jobName, string memory _params) external {
         console.log(msg.sender);
         uint thisJobId = _jobIds.current();
-        BacalhauJobCalled memory jobCalled = BacalhauJobCalled({
-            requestor: _from,
-            jobId: thisJobId,
-            jobName: _jobName,
-            params: _params
-        });
-        bacalhauJobCalledHistory.push(jobCalled);
         emit NewBacalhauJobSubmitted (
             msg.sender, thisJobId, "StableDiffusionGPU", "{\"prompt\":\"RainbowUnicorn}" //Using stringified JSON as params
         );
@@ -73,20 +55,15 @@ contract LilypadEvents {
             requestor: _to,
             jobId: _jobId,
             jobName: _jobName,
-            IPFSresult: _ipfsResult //QmeveuwF5wWBSgUXLG6p1oxF3GKkgjEnhA6AAwHUoVsx6E
+            IPFSresult: _ipfsResult
         });
         bacalhauJobHistory.push(jobResult);
         bacalhauJobsByAddress[_to].push(jobResult);
-
-        LilypadCallerInterface(_to).lilypadReceiver(address(this), _jobId, _jobName, _ipfsResult);
+        emit BacalhauJobResultsReturned(_to, _jobId, _jobName, _ipfsResult);
     }
 
     function fetchAllJobs() public view returns (BacalhauJob[] memory) {
         return bacalhauJobHistory;
-    }
-
-    function fetchAllCalledJobs() public view returns (BacalhauJobCalled[] memory) {
-        return bacalhauJobCalledHistory;
     }
 
     function fetchJobsByAddress(address _requestor) public view returns (BacalhauJob[] memory) {
