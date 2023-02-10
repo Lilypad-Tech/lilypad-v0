@@ -15,7 +15,17 @@ import (
 
 func main() {
 	ctx := log.Logger.WithContext(context.Background())
-	zerolog.SetGlobalLevel(zerolog.InfoLevel)
+
+	lvl := zerolog.InfoLevel
+	if level, found := os.LookupEnv("LOG_LEVEL"); found {
+		var err error
+		lvl, err = zerolog.ParseLevel(level)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err.Error())
+			return
+		}
+	}
+	zerolog.SetGlobalLevel(lvl)
 
 	ctx, cancel := signal.NotifyContext(ctx, os.Interrupt)
 	defer cancel()
