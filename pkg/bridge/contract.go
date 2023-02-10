@@ -101,6 +101,23 @@ func (r *realContract) Listen(ctx context.Context, out chan<- ContractSubmittedE
 func (r *realContract) ReadLogs(ctx context.Context, out chan<- ContractSubmittedEvent) {
 	log.Ctx(ctx).Debug().Uint64("fromBlock", r.maxSeenBlock+1).Msg("Polling for smart contract events")
 
+	// We deliberately ask for the current block *before* we make the events
+	// call. It's possible that a block will be written between the two calls:
+	//
+	//    FilterNewJobs(block: #1) -> seen block #1
+	//    block #2 gets written
+	//    BlockNumber() -> block #3
+	//    ...
+	//    FilterNewJobs(block: #3)
+	//
+	// In this case we would never see any events in block #2. So we instead
+	// remember the block number before the events call, and if a block is
+	// written between them, we will get it again next time we ask for events.
+	currentBlock, err := r.client.BlockNumber(ctx)
+	if err != nil {
+		log.Ctx(ctx).Error().Err(err).Send()
+	}
+
 	opts := bind.FilterOpts{Start: uint64(r.maxSeenBlock + 1), Context: ctx}
 	logs, err := r.contract.LilypadEventsFilterer.FilterNewBacalhauJobSubmitted(&opts, nil)
 	if err != nil {
@@ -108,6 +125,8 @@ func (r *realContract) ReadLogs(ctx context.Context, out chan<- ContractSubmitte
 		return
 	}
 	defer logs.Close()
+
+	r.maxSeenBlock = currentBlock
 
 	for logs.Next() {
 		recvEvent := logs.Event
