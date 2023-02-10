@@ -1,13 +1,12 @@
+SHELL = bash
+
 .PHONY: all
 all: build
-
-include go.env
-go.env:
-	go env | zsh -c export > $@
 
 export CGO_ENABLED=0
 export GOOS ?= $(shell go env GOOS)
 export GOARCH ?= $(shell go env GOARCH)
+export GOPATH ?= $(shell go env GOPATH)
 
 HOMEBREW_ROOT := $(shell brew config | grep HOMEBREW_PREFIX | cut -d: -f2)
 PROTOC_BREW := ${HOMEBREW_ROOT}/Cellar/protoc-gen-go
