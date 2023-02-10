@@ -122,21 +122,13 @@ func (r *realContract) ReadLogs(ctx context.Context, out chan<- ContractSubmitte
 			continue
 		}
 
-		specObj := stableDiffusionSpec
-		specObj.Docker.Entrypoint = append(specObj.Docker.Entrypoint, recvEvent.Params)
-		spec, err := json.Marshal(specObj)
-		if err != nil {
-			log.Ctx(ctx).Error().Err(err).Send()
-			continue
-		}
-
 		out <- &event{
 			orderId:     recvEvent.Raw.TxHash.Bytes(),
 			orderOwner:  recvEvent.RequestorContract.Bytes(),
 			orderNumber: recvEvent.JobId.Int64(),
 			orderName:   recvEvent.JobName,
 			state:       OrderStateSubmitted,
-			jobSpec:     spec,
+			jobSpec:     []byte(recvEvent.Params),
 		}
 
 		r.maxSeenBlock = recvEvent.Raw.BlockNumber
