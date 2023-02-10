@@ -6,6 +6,8 @@ go.env:
 	go env | zsh -c export > $@
 
 export CGO_ENABLED=0
+export GOOS ?= $(shell go env GOOS)
+export GOARCH ?= $(shell go env GOARCH)
 
 HOMEBREW_ROOT := $(shell brew config | grep HOMEBREW_PREFIX | cut -d: -f2)
 PROTOC_BREW := ${HOMEBREW_ROOT}/Cellar/protoc-gen-go
@@ -39,13 +41,21 @@ prepare: ${ABIGEN} ${HARDHAT}
 
 CONTRACTS := $(shell find hardhat/artifacts/contracts -name '*.sol')
 PACKAGES  := $(shell echo '${CONTRACTS}' | xargs -n1 basename -s .sol | tr ' ' "\n" | awk '{ print "hardhat/artifacts/contracts/" $$1 ".sol/" $$1 ".go" }')
-BINARY    := ./$(shell pwd | xargs basename)-${GOOS}-${GOARCH}
+BASENAME  := $(shell pwd | xargs basename)
+BINARY    := bin/${BASENAME}-${GOOS}-${GOARCH}
 
-${BINARY}: ${PACKAGES} $(shell find pkg -name '*.go') main.go
-	go build -o ${BINARY} .
+OSES     := darwin linux
+ARCHES   := arm64 amd64
+BINARIES := $(foreach OS,${OSES}, $(foreach ARCH,${ARCHES},bin/${BASENAME}-${OS}-${ARCH}))
+
+bin/:
+	mkdir -p $@
+
+bin/${BASENAME}-%: ${PACKAGES} $(shell find pkg -name '*.go') main.go | bin/
+	GOOS=$(shell echo $@ | cut -f2 -d'-') GOARCH=$(shell echo $@ | cut -f3 -d'-') go build -o $@ .
 
 .PHONY: build
-build: ${PACKAGES} ${BINARY}
+build: ${PACKAGES} ${BINARIES}
 
 .PHONY: run
 run: ${BINARY}
@@ -54,4 +64,4 @@ run: ${BINARY}
 .PHONY: clean
 clean:
 	-$(RM) ${PACKAGES}
-	-${RM} ${BINARY}
+	-${RM} -r bin/

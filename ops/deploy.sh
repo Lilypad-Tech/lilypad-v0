@@ -22,7 +22,7 @@ gSCP lilypad.service /tmp/lilypad.service
 gSSH mv /tmp/lilypad.service /etc/systemd/system/lilypad.service
 gSSH chmod 0444 /etc/systemd/system/lilypad.service
 
-gSCP ./../lilypad-linux-amd64 /tmp/lilypad
+gSCP ./../bin/lilypad-linux-amd64 /tmp/lilypad
 gSSH mv /tmp/lilypad /usr/bin/lilypad
 gSSH chmod 0555 /usr/bin/lilypad
 
