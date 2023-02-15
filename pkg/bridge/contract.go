@@ -158,7 +158,10 @@ func (r *realContract) Refund(ctx context.Context, e ContractFailedEvent) (Contr
 }
 
 func NewContract(contractAddr common.Address, privateKey *ecdsa.PrivateKey) (SmartContract, error) {
-	client, err := ethclient.Dial("wss://ws-filecoin-hyperspace.chainstacklabs.com/rpc/v0")
+	rpcEndpoint := "wss://wss.hyperspace.node.glif.io/apigw/lotus/rpc/v0"
+
+	log.Debug().Str("endpoint", rpcEndpoint).Msg("Dial")
+	client, err := ethclient.Dial(rpcEndpoint)
 	if err != nil {
 		return nil, err
 	}
