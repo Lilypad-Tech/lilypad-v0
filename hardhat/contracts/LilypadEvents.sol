@@ -2,7 +2,7 @@
 pragma solidity >=0.8.4;
 import "hardhat/console.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
-import "./LilypadInterface.sol";
+import "./LilypadCallerInterface.sol";
 
 error LilypadEventsError();
 
@@ -16,16 +16,14 @@ contract LilypadEvents {
     //testing
     struct BacalhauJobCalled {
         address requestor;
-        uint jobId;
-        string jobName;
-        string params;
+        uint id;
+        string spec;
     }
 
     struct BacalhauJob {
         address requestor;
-        uint jobId;
-        string jobName;
-        string IPFSresult;
+        uint id;
+        string result;
     }
 
     BacalhauJob[] public bacalhauJobHistory; //complete history of all jobs
@@ -34,14 +32,20 @@ contract LilypadEvents {
 
     event NewBacalhauJobSubmitted(
       address indexed requestorContract,
-      uint jobId, //unique id - though uint only goes up to 2^265 -1 so probably want to handle this better in future maybe a hash
-      string jobName, //the name of the Bacalhau Job. eg. "StableDiffusion" ? // how else to identify?
-      string params //stingified params? Seems rife for errors - we may need to consider a Base contract and 
-      //several others that verify details before calling bacalhau. Or multiple functions in here to call specific things + generic job
+
+      // unique id - though uint only goes up to 2^265 -1 so probably want to handle
+      // this better in future maybe a hash
+      uint id,
+
+      // stingified params? Seems rife for errors - we may need to consider a
+      // Base contract and several others that verify details before calling
+      // bacalhau. Or multiple functions in here to call specific things +
+      // generic job
+      string spec
     );
 
     event BacalhauJobResultsReturned(
-        address requestorContract, uint jobId, string jobName, string results
+        address requestorContract, uint jobId, string results
     );
 
     constructor() {
@@ -50,35 +54,33 @@ contract LilypadEvents {
 
     //msg.sender is always the address where the current (external) function call came from.
     //need interface for different jobs available to verify params before sending
-    function runBacalhauJob(address _from, string memory _jobName, string memory _params) public {
-        console.log(msg.sender);
+    function runBacalhauJob(address _from, string memory _spec) public {
+        console.log(_spec);
+
         uint thisJobId = _jobIds.current();
         BacalhauJobCalled memory jobCalled = BacalhauJobCalled({
             requestor: _from,
-            jobId: thisJobId,
-            jobName: _jobName,
-            params: _params
+            id: thisJobId,
+            spec: _spec
         });
+
         bacalhauJobCalledHistory.push(jobCalled);
-        emit NewBacalhauJobSubmitted (
-            msg.sender, thisJobId, "StableDiffusionGPU", "{\"prompt\":\"RainbowUnicorn}" //Using stringified JSON as params
-        );
+        emit NewBacalhauJobSubmitted (msg.sender, thisJobId, _spec);
         _jobIds.increment();
     }
 
     // this should really be owner only - our admin contract should be the only one able to call it
-    function returnBacalhauResults(address _to, uint _jobId, string memory _jobName, string memory _ipfsResult) public {
-        console.log("do stuff");
+    function returnBacalhauResults(address _to, uint _jobId, string memory _ipfsResult) public {
         BacalhauJob memory jobResult = BacalhauJob({
             requestor: _to,
-            jobId: _jobId,
-            jobName: _jobName,
-            IPFSresult: _ipfsResult //QmeveuwF5wWBSgUXLG6p1oxF3GKkgjEnhA6AAwHUoVsx6E
+            id: _jobId,
+            result: _ipfsResult
         });
         bacalhauJobHistory.push(jobResult);
         bacalhauJobsByAddress[_to].push(jobResult);
 
-        LilypadCallerInterface(_to).lilypadReceiver(address(this), _jobId, _jobName, _ipfsResult);
+        emit BacalhauJobResultsReturned(address(this), _jobId, _ipfsResult);
+        LilypadCallerInterface(_to).lilypadReceiver(address(this), _jobId, _ipfsResult);
     }
 
     function fetchAllJobs() public view returns (BacalhauJob[] memory) {

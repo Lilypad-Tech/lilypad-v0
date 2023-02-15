@@ -72,7 +72,6 @@ func (r *realContract) Complete(ctx context.Context, event BacalhauJobCompletedE
 		opts,
 		event.OrderRequestor(),
 		big.NewInt(event.OrderNumber()),
-		event.OrderName(),
 		event.Result().String(),
 	)
 	if err != nil {
@@ -133,7 +132,7 @@ func (r *realContract) ReadLogs(ctx context.Context, out chan<- ContractSubmitte
 		log.Ctx(ctx).Debug().
 			Stringer("txn", recvEvent.Raw.TxHash).
 			Uint64("block#", recvEvent.Raw.BlockNumber).
-			Str("params", recvEvent.Params).
+			Str("spec", recvEvent.Spec).
 			Bool("removed", recvEvent.Raw.Removed).
 			Msg("Event")
 
@@ -144,10 +143,9 @@ func (r *realContract) ReadLogs(ctx context.Context, out chan<- ContractSubmitte
 		out <- &event{
 			orderId:     recvEvent.Raw.TxHash.Bytes(),
 			orderOwner:  recvEvent.RequestorContract.Bytes(),
-			orderNumber: recvEvent.JobId.Int64(),
-			orderName:   recvEvent.JobName,
+			orderNumber: recvEvent.Id.Int64(),
 			state:       OrderStateSubmitted,
-			jobSpec:     []byte(recvEvent.Params),
+			jobSpec:     []byte(recvEvent.Spec),
 		}
 
 		r.maxSeenBlock = recvEvent.Raw.BlockNumber
