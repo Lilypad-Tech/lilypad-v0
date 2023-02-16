@@ -1,0 +1,85 @@
+{
+  "_format": "hh-sol-artifact-1",
+  "contractName": "LilypadCallerInterface",
+  "sourceName": "contracts/LilypadCallerInterface.sol",
+  "abi": [
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "_from",
+          "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "_jobId",
+          "type": "uint256"
+        },
+        {
+          "internalType": "string",
+          "name": "_jobName",
+          "type": "string"
+        },
+        {
+          "internalType": "string",
+          "name": "_errorMsg",
+          "type": "string"
+        }
+      ],
+      "name": "lilypadCancelled",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "_from",
+          "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "_jobId",
+          "type": "uint256"
+        },
+        {
+          "internalType": "string",
+          "name": "_jobName",
+          "type": "string"
+        },
+        {
+          "internalType": "string",
+          "name": "_ipfsResult",
+          "type": "string"
+        }
+      ],
+      "name": "lilypadFulfilled",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "string",
+          "name": "_jobName",
+          "type": "string"
+        },
+        {
+          "internalType": "string",
+          "name": "_params",
+          "type": "string"
+        }
+      ],
+      "name": "lilypadRequest",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    }
+  ],
+  "bytecode": "0x",
+  "deployedBytecode": "0x",
+  "linkReferences": {},
+  "deployedLinkReferences": {}
+}
