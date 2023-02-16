@@ -32,7 +32,7 @@ contract LilypadCaller is LilypadCallerInterface{
 
     constructor() {
         console.log("Deploying LilypadCall contract");
-        LPEvents = 0xdC7612fa94F098F1d7BB40E0f4F4db8fF0bC8820;
+        LPEvents = 0x50Fd7796e9B56C18e5B15F00321241b285ebd386; // <- proxy address
         LilypadEventsContract = LilypadEvents(LPEvents);
     }
 

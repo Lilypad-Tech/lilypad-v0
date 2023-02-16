@@ -58,24 +58,6 @@
       "outputs": [],
       "stateMutability": "nonpayable",
       "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "string",
-          "name": "_jobName",
-          "type": "string"
-        },
-        {
-          "internalType": "string",
-          "name": "_params",
-          "type": "string"
-        }
-      ],
-      "name": "lilypadRequest",
-      "outputs": [],
-      "stateMutability": "nonpayable",
-      "type": "function"
     }
   ],
   "bytecode": "0x",
