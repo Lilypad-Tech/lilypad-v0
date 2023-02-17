@@ -44,7 +44,7 @@ func TestCanSaveAndReloadInEveryState(t *testing.T) {
 	})
 
 	t.Run("BacalhauJobCompletedEvent", func(t *testing.T) {
-		runTest(exampleEvent().JobCreated(model.NewJob()).Completed(cid.Cid{}), OrderStateCompleted)
+		runTest(exampleEvent().JobCreated(model.NewJob()).Completed(cid.Cid{}, "", "", 0), OrderStateCompleted)
 	})
 
 	t.Run("BacalhauJobFailedEvent", func(t *testing.T) {
@@ -52,7 +52,7 @@ func TestCanSaveAndReloadInEveryState(t *testing.T) {
 	})
 
 	t.Run("ContractPaidEvent", func(t *testing.T) {
-		runTest(exampleEvent().JobCreated(model.NewJob()).Completed(cid.Cid{}).Paid(), OrderStatePaid)
+		runTest(exampleEvent().JobCreated(model.NewJob()).Completed(cid.Cid{}, "", "", 0).Paid(), OrderStatePaid)
 	})
 
 	t.Run("ContractRefundedEvent", func(t *testing.T) {
@@ -72,7 +72,7 @@ func TestOldVersionsAreNotReloaded(t *testing.T) {
 	require.NoError(t, err)
 	require.Empty(t, events)
 
-	e = e.JobCreated(model.NewJob()).Completed(cid.Cid{}).Paid()
+	e = e.JobCreated(model.NewJob()).Completed(cid.Cid{}, "", "", 0).Paid()
 	require.NoError(t, repo.Save(e))
 
 	events, err = repo.Reload(OrderStateRunning)

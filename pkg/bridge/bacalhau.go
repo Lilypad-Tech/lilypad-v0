@@ -12,6 +12,7 @@ import (
 	"github.com/ipfs/go-cid"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
+	"golang.org/x/exp/maps"
 )
 
 const LilypadJobAnnotation string = "lilypad-job"
@@ -107,29 +108,33 @@ func (runner *bacalhauRunner) FindCompleted(ctx context.Context, jobs []Bacalhau
 			if ok, err := jobStillRunning(bacjob.Status.State); !ok || err != nil {
 				log.Ctx(ctx).Debug().Err(err).Msg("Bacalhau job still in progress")
 			} else if ok, err := jobComplete(bacjob.Status.State); ok && err == nil {
+				node := maps.Values(bacjob.Status.State.Nodes)[0]
+				shard := maps.Values(node.Shards)[0]
+				output := shard.RunOutput
+
 				results, err := runner.Client.GetResults(ctx, bacjob.Metadata.ID)
 				if err != nil {
 					log.Ctx(ctx).Error().Err(err).Msg("Unable to get job results")
 					continue
 				}
 
-				var resultCid cid.Cid
 				var foundResult bool = false
 				for _, result := range results {
 					if result.Data.CID != "" {
-						resultCid, err = cid.Parse(result.Data.CID)
+						resultCid, err := cid.Parse(result.Data.CID)
 						if err != nil {
 							log.Ctx(ctx).Error().Str("cid", result.Data.CID).Err(err).Msg("Unable to parse result CID")
 							continue
 						}
+
+						log.Ctx(ctx).Info().Err(err).Msg("Bacalhau job completed")
+						completed = append(completed, j.Completed(resultCid, output.STDOUT, output.STDERR, output.ExitCode))
 						foundResult = true
+						break
 					}
 				}
 
-				if foundResult {
-					log.Ctx(ctx).Info().Err(err).Msg("Bacalhau job completed")
-					completed = append(completed, j.Completed(resultCid))
-				} else {
+				if !foundResult {
 					log.Ctx(ctx).Error().Msg("No reuslts found for completed job")
 					failed = append(failed, j.JobError())
 				}

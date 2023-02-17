@@ -18,12 +18,14 @@ contract LilypadEvents {
         address requestor;
         uint id;
         string spec;
+        LilypadResultType resultType;
     }
 
     struct BacalhauJob {
         address requestor;
         uint id;
         string result;
+        LilypadResultType resultType;
     }
 
     BacalhauJob[] public bacalhauJobHistory; //complete history of all jobs
@@ -41,7 +43,10 @@ contract LilypadEvents {
       // Base contract and several others that verify details before calling
       // bacalhau. Or multiple functions in here to call specific things +
       // generic job
-      string spec
+      string spec,
+
+      // what type of result the job wants to receive
+      LilypadResultType resultType
     );
 
     event BacalhauJobResultsReturned(
@@ -54,33 +59,35 @@ contract LilypadEvents {
 
     //msg.sender is always the address where the current (external) function call came from.
     //need interface for different jobs available to verify params before sending
-    function runBacalhauJob(address _from, string memory _spec) public {
+    function runBacalhauJob(address _from, string memory _spec, LilypadResultType _resultType) public {
         console.log(_spec);
 
         uint thisJobId = _jobIds.current();
         BacalhauJobCalled memory jobCalled = BacalhauJobCalled({
             requestor: _from,
             id: thisJobId,
-            spec: _spec
+            spec: _spec,
+            resultType: _resultType
         });
 
         bacalhauJobCalledHistory.push(jobCalled);
-        emit NewBacalhauJobSubmitted (msg.sender, thisJobId, _spec);
+        emit NewBacalhauJobSubmitted (msg.sender, thisJobId, _spec, _resultType);
         _jobIds.increment();
     }
 
     // this should really be owner only - our admin contract should be the only one able to call it
-    function returnBacalhauResults(address _to, uint _jobId, string memory _ipfsResult) public {
+    function returnBacalhauResults(address _to, uint _jobId, LilypadResultType _resultType, string memory _result) public {
         BacalhauJob memory jobResult = BacalhauJob({
             requestor: _to,
             id: _jobId,
-            result: _ipfsResult
+            result: _result,
+            resultType: _resultType
         });
         bacalhauJobHistory.push(jobResult);
         bacalhauJobsByAddress[_to].push(jobResult);
 
-        emit BacalhauJobResultsReturned(address(this), _jobId, _ipfsResult);
-        LilypadCallerInterface(_to).lilypadReceiver(address(this), _jobId, _ipfsResult);
+        emit BacalhauJobResultsReturned(address(this), _jobId, _result);
+        LilypadCallerInterface(_to).lilypadReceiver(address(this), _jobId, _resultType, _result);
     }
 
     function fetchAllJobs() public view returns (BacalhauJob[] memory) {

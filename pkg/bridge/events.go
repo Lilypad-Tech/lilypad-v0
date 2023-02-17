@@ -34,6 +34,19 @@ func OrderStates() [7]OrderState {
 	}
 }
 
+type ResultType uint8
+
+const (
+	ResultTypeCID      ResultType = 0
+	ResultTypeStdOut   ResultType = 1
+	ResultTypeStdErr   ResultType = 2
+	ResultTypeExitCode ResultType = 3
+)
+
+func (r ResultType) Valid() bool {
+	return r >= ResultTypeCID && r <= ResultTypeExitCode
+}
+
 type Event interface {
 	OrderId() common.Hash
 	OrderState() OrderState
@@ -52,7 +65,7 @@ type ContractSubmittedEvent interface {
 	Retryable
 
 	OrderNumber() int64
-	OrderName() string
+	OrderResultType() ResultType
 	OrderRequestor() common.Address
 	Spec() (model.Spec, error)
 
@@ -68,7 +81,7 @@ type BacalhauJobRunningEvent interface {
 
 	JobID() string
 
-	Completed(cid.Cid) BacalhauJobCompletedEvent
+	Completed(result cid.Cid, stdout, stderr string, exitcode int) BacalhauJobCompletedEvent
 	JobError() BacalhauJobFailedEvent
 }
 
@@ -79,6 +92,9 @@ type BacalhauJobCompletedEvent interface {
 	BacalhauJobRunningEvent
 
 	Result() cid.Cid
+	StdOut() string
+	StdErr() string
+	ExitCode() int
 
 	Paid() ContractPaidEvent
 }
@@ -114,17 +130,20 @@ type ContractRefundedEvent interface {
 }
 
 type event struct {
-	eventId     uint
-	orderId     []byte
-	orderOwner  []byte
-	orderNumber int64
-	orderName   string
-	attempts    uint
-	lastAttempt time.Time
-	state       OrderState
-	jobSpec     []byte
-	jobId       string
-	jobResult   string
+	eventId         uint
+	orderId         []byte
+	orderOwner      []byte
+	orderNumber     int64
+	orderResultType uint8
+	attempts        uint
+	lastAttempt     time.Time
+	state           OrderState
+	jobSpec         []byte
+	jobId           string
+	jobResult       string
+	jobStdout       string
+	jobStderr       string
+	jobExitcode     int
 }
 
 // The smart contract order ID.
@@ -137,8 +156,8 @@ func (e *event) OrderState() OrderState {
 }
 
 // OrderName implements BacalhauJobCompletedEvent
-func (e *event) OrderName() string {
-	return e.orderName
+func (e *event) OrderResultType() ResultType {
+	return ResultType(e.orderResultType)
 }
 
 // OrderNumber implements BacalhauJobCompletedEvent
@@ -173,6 +192,21 @@ func (e *event) LastAttempt() time.Time {
 	return e.lastAttempt
 }
 
+// ExitCode implements BacalhauJobCompletedEvent
+func (e *event) ExitCode() int {
+	return e.jobExitcode
+}
+
+// StdErr implements BacalhauJobCompletedEvent
+func (e *event) StdErr() string {
+	return e.jobStderr
+}
+
+// StdOut implements BacalhauJobCompletedEvent
+func (e *event) StdOut() string {
+	return e.jobStdout
+}
+
 // Records that a ContractSubmittedEvent has been sent to the Bacalhau network
 // as a job.
 func (e *event) JobCreated(job *model.Job) BacalhauJobRunningEvent {
@@ -202,9 +236,12 @@ func (e *event) Spec() (spec model.Spec, err error) {
 }
 
 // Records that a running Bacalhau job has completed.
-func (e *event) Completed(result cid.Cid) BacalhauJobCompletedEvent {
+func (e *event) Completed(result cid.Cid, stdout, stderr string, exitcode int) BacalhauJobCompletedEvent {
 	e.state = OrderStateCompleted
 	e.jobResult = result.String()
+	e.jobStdout = stdout
+	e.jobStderr = stderr
+	e.jobExitcode = exitcode
 	return e
 }
 

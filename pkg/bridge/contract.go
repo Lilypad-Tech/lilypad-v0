@@ -3,6 +3,7 @@ package bridge
 import (
 	"context"
 	"crypto/ecdsa"
+	"fmt"
 	"math/big"
 	"time"
 
@@ -68,11 +69,24 @@ func (r *realContract) Complete(ctx context.Context, event BacalhauJobCompletedE
 		return nil, err
 	}
 
+	var result string
+	switch event.OrderResultType() {
+	case ResultTypeCID:
+		result = event.Result().String()
+	case ResultTypeStdOut:
+		result = event.StdOut()
+	case ResultTypeStdErr:
+		result = event.StdErr()
+	case ResultTypeExitCode:
+		result = fmt.Sprint(event.ExitCode())
+	}
+
 	txn, err := r.contract.LilypadEventsTransactor.ReturnBacalhauResults(
 		opts,
 		event.OrderRequestor(),
 		big.NewInt(event.OrderNumber()),
-		event.Result().String(),
+		uint8(event.OrderResultType()),
+		result,
 	)
 	if err != nil {
 		return nil, err
@@ -140,12 +154,18 @@ func (r *realContract) ReadLogs(ctx context.Context, out chan<- ContractSubmitte
 			continue
 		}
 
+		if !ResultType(recvEvent.ResultType).Valid() {
+			log.Ctx(ctx).Warn().Uint8("resultType", recvEvent.ResultType).Msg("invalid ResultType")
+			continue
+		}
+
 		out <- &event{
-			orderId:     recvEvent.Raw.TxHash.Bytes(),
-			orderOwner:  recvEvent.RequestorContract.Bytes(),
-			orderNumber: recvEvent.Id.Int64(),
-			state:       OrderStateSubmitted,
-			jobSpec:     []byte(recvEvent.Spec),
+			orderId:         recvEvent.Raw.TxHash.Bytes(),
+			orderOwner:      recvEvent.RequestorContract.Bytes(),
+			orderNumber:     recvEvent.Id.Int64(),
+			orderResultType: recvEvent.ResultType,
+			state:           OrderStateSubmitted,
+			jobSpec:         []byte(recvEvent.Spec),
 		}
 
 		r.maxSeenBlock = recvEvent.Raw.BlockNumber

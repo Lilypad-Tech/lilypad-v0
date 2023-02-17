@@ -30,7 +30,7 @@ var (
 
 // LilypadCallerInterfaceMetaData contains all meta data concerning the LilypadCallerInterface contract.
 var LilypadCallerInterfaceMetaData = &bind.MetaData{
-	ABI: "[{\"inputs\":[{\"internalType\":\"address\",\"name\":\"_from\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"_jobId\",\"type\":\"uint256\"},{\"internalType\":\"string\",\"name\":\"_ipfsResult\",\"type\":\"string\"}],\"name\":\"lilypadReceiver\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"}]",
+	ABI: "[{\"inputs\":[{\"internalType\":\"address\",\"name\":\"_from\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"_jobId\",\"type\":\"uint256\"},{\"internalType\":\"enumLilypadResultType\",\"name\":\"_resultType\",\"type\":\"uint8\"},{\"internalType\":\"string\",\"name\":\"_result\",\"type\":\"string\"}],\"name\":\"lilypadReceiver\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"}]",
 }
 
 // LilypadCallerInterfaceABI is the input ABI used to generate the binding from.
@@ -179,24 +179,24 @@ func (_LilypadCallerInterface *LilypadCallerInterfaceTransactorRaw) Transact(opt
 	return _LilypadCallerInterface.Contract.contract.Transact(opts, method, params...)
 }
 
-// LilypadReceiver is a paid mutator transaction binding the contract method 0x35c764e3.
+// LilypadReceiver is a paid mutator transaction binding the contract method 0x511deb47.
 //
-// Solidity: function lilypadReceiver(address _from, uint256 _jobId, string _ipfsResult) returns()
-func (_LilypadCallerInterface *LilypadCallerInterfaceTransactor) LilypadReceiver(opts *bind.TransactOpts, _from common.Address, _jobId *big.Int, _ipfsResult string) (*types.Transaction, error) {
-	return _LilypadCallerInterface.contract.Transact(opts, "lilypadReceiver", _from, _jobId, _ipfsResult)
+// Solidity: function lilypadReceiver(address _from, uint256 _jobId, uint8 _resultType, string _result) returns()
+func (_LilypadCallerInterface *LilypadCallerInterfaceTransactor) LilypadReceiver(opts *bind.TransactOpts, _from common.Address, _jobId *big.Int, _resultType uint8, _result string) (*types.Transaction, error) {
+	return _LilypadCallerInterface.contract.Transact(opts, "lilypadReceiver", _from, _jobId, _resultType, _result)
 }
 
-// LilypadReceiver is a paid mutator transaction binding the contract method 0x35c764e3.
+// LilypadReceiver is a paid mutator transaction binding the contract method 0x511deb47.
 //
-// Solidity: function lilypadReceiver(address _from, uint256 _jobId, string _ipfsResult) returns()
-func (_LilypadCallerInterface *LilypadCallerInterfaceSession) LilypadReceiver(_from common.Address, _jobId *big.Int, _ipfsResult string) (*types.Transaction, error) {
-	return _LilypadCallerInterface.Contract.LilypadReceiver(&_LilypadCallerInterface.TransactOpts, _from, _jobId, _ipfsResult)
+// Solidity: function lilypadReceiver(address _from, uint256 _jobId, uint8 _resultType, string _result) returns()
+func (_LilypadCallerInterface *LilypadCallerInterfaceSession) LilypadReceiver(_from common.Address, _jobId *big.Int, _resultType uint8, _result string) (*types.Transaction, error) {
+	return _LilypadCallerInterface.Contract.LilypadReceiver(&_LilypadCallerInterface.TransactOpts, _from, _jobId, _resultType, _result)
 }
 
-// LilypadReceiver is a paid mutator transaction binding the contract method 0x35c764e3.
+// LilypadReceiver is a paid mutator transaction binding the contract method 0x511deb47.
 //
-// Solidity: function lilypadReceiver(address _from, uint256 _jobId, string _ipfsResult) returns()
-func (_LilypadCallerInterface *LilypadCallerInterfaceTransactorSession) LilypadReceiver(_from common.Address, _jobId *big.Int, _ipfsResult string) (*types.Transaction, error) {
-	return _LilypadCallerInterface.Contract.LilypadReceiver(&_LilypadCallerInterface.TransactOpts, _from, _jobId, _ipfsResult)
+// Solidity: function lilypadReceiver(address _from, uint256 _jobId, uint8 _resultType, string _result) returns()
+func (_LilypadCallerInterface *LilypadCallerInterfaceTransactorSession) LilypadReceiver(_from common.Address, _jobId *big.Int, _resultType uint8, _result string) (*types.Transaction, error) {
+	return _LilypadCallerInterface.Contract.LilypadReceiver(&_LilypadCallerInterface.TransactOpts, _from, _jobId, _resultType, _result)
 }
 

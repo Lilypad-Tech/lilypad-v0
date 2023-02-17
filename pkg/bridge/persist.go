@@ -54,13 +54,16 @@ func (repo *sqlRepository) Reload(state OrderState) ([]Event, error) {
 			&e.orderId,
 			&e.orderOwner,
 			&e.orderNumber,
-			&e.orderName,
+			&e.orderResultType,
 			&e.attempts,
 			&lastAttemptString,
 			&e.state,
 			&e.jobSpec,
 			&e.jobId,
 			&e.jobResult,
+			&e.jobStdout,
+			&e.jobStderr,
+			&e.jobExitcode,
 		)
 		if err != nil {
 			break
@@ -85,13 +88,16 @@ func (repo *sqlRepository) Save(in Event) error {
 		sql.Named("orderId", e.orderId),
 		sql.Named("orderOwner", e.orderOwner),
 		sql.Named("orderNumber", e.orderNumber),
-		sql.Named("orderName", e.orderName),
+		sql.Named("orderResultType", e.orderResultType),
 		sql.Named("attempts", e.attempts),
 		sql.Named("lastAttempt", e.lastAttempt.Format(time.RFC3339)),
 		sql.Named("state", e.state),
 		sql.Named("jobSpec", e.jobSpec),
 		sql.Named("jobId", e.jobId),
 		sql.Named("jobResult", e.jobResult),
+		sql.Named("jobStdout", e.jobStdout),
+		sql.Named("jobStderr", e.jobStderr),
+		sql.Named("jobExitcode", e.jobExitcode),
 	)
 	return err
 }

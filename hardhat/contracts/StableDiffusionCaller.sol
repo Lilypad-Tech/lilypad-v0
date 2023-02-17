@@ -47,19 +47,20 @@ contract StableDiffusionCaller is LilypadCallerInterface {
     function StableDiffusion(string calldata _prompt) external {
         // TODO: do proper json encoding, look out for quotes in _prompt
         string memory spec = string.concat(specStart, _prompt, specEnd);
-        bridge.runBacalhauJob(address(this), spec);
+        bridge.runBacalhauJob(address(this), spec, LilypadResultType.CID);
     }
 
     //needed for return!!
-    function lilypadReceiver(address _from, uint _jobId, string memory _ipfsResult) public {
+    function lilypadReceiver(address _from, uint _jobId, LilypadResultType _resultType, string memory _result) public {
         //need some checks here that it a legitimate result
         require(_from == address(bridge)); //really not secure
+        require(_resultType == LilypadResultType.CID);
         LilypadJob memory jobResult = LilypadJob({
             jobId: _jobId,
-            ipfsResult: _ipfsResult
+            ipfsResult: _result
         });
         lilypadJobs.push(jobResult);
-        emit LilypadResponse(_jobId, _ipfsResult);
+        emit LilypadResponse(_jobId, _result);
     }
 
     function fetchAllJobs() public view returns (LilypadJob[] memory) {

@@ -3,13 +3,16 @@ CREATE TABLE IF NOT EXISTS events (
 	orderId     VARCHAR(32),
 	orderOwner  VARCHAR(32),
 	orderNumber BIGINT,
-	orderName   TEXT,
+	orderResultType INTEGER,
 	attempts    SMALLINT,
 	lastAttempt VARCHAR(25),
 	state       SMALLINT,
 	jobSpec     BLOB,
 	jobId       TEXT,
-	jobResult   TEXT
+	jobResult   TEXT,
+	jobStdout	TEXT,
+	jobStderr	TEXT,
+	jobExitcode SMALLINT
 );
 
 CREATE UNIQUE INDEX IF NOT EXISTS event_versions ON events (orderId, eventId);

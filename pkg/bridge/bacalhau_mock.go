@@ -22,7 +22,7 @@ var ErrorCreate RunnerCreateHandler = func(ctx context.Context, cse ContractSubm
 var SuccssfulFind RunnerFindCompletedHandler = func(ctx context.Context, jobs []BacalhauJobRunningEvent) ([]BacalhauJobCompletedEvent, []BacalhauJobFailedEvent) {
 	completed := []BacalhauJobCompletedEvent{}
 	for _, job := range jobs {
-		completed = append(completed, job.Completed(cid.Cid{}))
+		completed = append(completed, job.Completed(cid.Cid{}, "", "", 0))
 	}
 	return completed, nil
 }
