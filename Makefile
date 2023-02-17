@@ -25,21 +25,34 @@ HARDHAT ?= hardhat/node_modules/.bin/hardhat
 ${HARDHAT}:
 	cd hardhat && npm install
 
-artifacts/%.json artifacts/%.dbg.json: %.sol ${HARDHAT}
+.PHONY: prepare
+prepare: ${ABIGEN} ${HARDHAT}
+
+CONTRACTS := $(shell find hardhat/contracts -name '*.sol')
+
+include hardhat/contracts/.deps.mk
+hardhat/contracts/.deps.mk: ${CONTRACTS} ${MAKEFILES}
+	echo ${CONTRACTS} | \
+		xargs -n1 basename -s .sol | \
+		tr ' ' "\n" | \
+		awk '{ \
+			print "hardhat/artifacts/contracts/" $$1 ".sol/" $$1 ".json: " "hardhat/contracts/" $$1 ".sol"; \
+			print "ABIJSONS += hardhat/artifacts/contracts/" $$1 ".sol/" $$1 ".json"; \
+			print "ABIJSONS += hardhat/artifacts/contracts/" $$1 ".sol/" $$1 ".dbg.json"; \
+			print "PACKAGES += hardhat/artifacts/contracts/" $$1 ".sol/" $$1 ".go"; \
+		}' > $@
+
+${ABIJSONS}: | ${HARDHAT}
 	cd hardhat && npx hardhat compile
 
-%.go: %.json ${ABIGEN}
+%.go: %.json | ${ABIGEN}
 	${ABIGEN} \
 		--abi <(cat $< | jq -rc '.abi') \
 		--bin <(cat $< | jq -rc '.bytecode') \
 		--pkg $(shell dirname $@ | xargs basename -s .sol) \
 		> $@
 
-.PHONY: prepare
-prepare: ${ABIGEN} ${HARDHAT}
 
-CONTRACTS := $(shell find hardhat/artifacts/contracts -name '*.sol')
-PACKAGES  := $(shell echo '${CONTRACTS}' | xargs -n1 basename -s .sol | tr ' ' "\n" | awk '{ print "hardhat/artifacts/contracts/" $$1 ".sol/" $$1 ".go" }')
 BASENAME  := $(shell pwd | xargs basename)
 BINARY    := bin/${BASENAME}-${GOOS}-${GOARCH}
 
@@ -56,11 +69,25 @@ bin/${BASENAME}-%: ${PACKAGES} $(shell find pkg -name '*.go') main.go | bin/
 .PHONY: build
 build: ${PACKAGES} ${BINARIES}
 
+ENV_FILE ?= hardhat/.env
+ifeq ($(shell cat ${ENV_FILE} | grep WALLET_PRIVATE_KEY),)
+$(warning No WALLET_PRIVATE_KEY in ${ENV_FILE})
+endif
+ifeq ($(shell cat ${ENV_FILE} | grep CONTRACT_ADDRESS),)
+$(warning No CONTRACT_ADDRESS in ${ENV_FILE})
+endif
+
+.PHONY: deploy
+deploy: ${BINARIES} | ops/deploy.sh ${ENV_FILE}
+	cd ops && ./deploy.sh
+
 .PHONY: run
-run: ${BINARY}
-	env $$(cat hardhat/.env) ${BINARY}
+run: ${BINARY} | ${ENV_FILE}
+	env $$(cat ${ENV_FILE}) ${BINARY}
 
 .PHONY: clean
 clean:
+	-$(RM) hardhat/contracts/.deps.mk
 	-$(RM) ${PACKAGES}
+	-$(RM) ${ABIJSONS}
 	-${RM} -r bin/
