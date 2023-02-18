@@ -34,7 +34,9 @@ jobs:
       run: make prepare
 
     - name: Build
-      run: make build
+      run: |
+        make key > hardhat/.env
+        make build
 
     - name: Archive
       uses: actions/upload-artifact@v3

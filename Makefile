@@ -13,13 +13,9 @@ PROTOC_BREW := ${HOMEBREW_ROOT}/Cellar/protoc-gen-go
 ${PROTOC_BREW}:
 	brew install protoc-gen-go
 
-GO_ETHEREUM := ${GOPATH}/pkg/mod/github.com/ethereum/go-ethereum@v1.10.26
-${GO_ETHEREUM}:
-	go get
-
 ABIGEN ?= ${GOPATH}/bin/abigen
-${ABIGEN}: ${PROTOC_BREW} ${GO_ETHEREUM}
-	cd ${GO_ETHEREUM} && make devtools
+${ABIGEN}: ${PROTOC_BREW}
+	go install github.com/ethereum/go-ethereum/cmd/abigen@v1.10.26
 
 %/node_modules/.bin/hardhat:
 	cd $* && npm install
@@ -92,6 +88,13 @@ deploy: ${BINARIES} | ops/deploy.sh ${ENV_FILE}
 .PHONY: run
 run: ${BINARY} | ${ENV_FILE}
 	env $$(cat ${ENV_FILE}) ${BINARY}
+
+.PHONY: key
+key:
+	@openssl ecparam -name secp256k1 -genkey -noout | \
+		openssl ec -text -noout 2>/dev/null | \
+		grep priv -A 3 | tail -n +2 | tr -d ":\n[:space:]" | \
+		OFS='' xargs printf WALLET_PRIVATE_KEY=%s
 
 .SECONDARY: ${HARDHAT_PACKAGES}
 
