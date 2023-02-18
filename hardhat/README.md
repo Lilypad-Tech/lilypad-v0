@@ -32,3 +32,8 @@ REPORT_GAS=true npx hardhat test
 npx hardhat node
 npx hardhat run scripts/deploy.ts
 ```
+
+Upgrades: https://docs.openzeppelin.com/contracts/4.x/upgradeable & https://docs.openzeppelin.com/upgrades-plugins/1.x/ & https://docs.openzeppelin.com/upgrades-plugins/1.x/proxies#the-constructor-caveat
+"Once this contract is set up and compiled, you can deploy it using the Upgrades Plugins. The following snippet shows an example deployment script using Hardhat."
+Transparent proxies define an admin address which has the rights to upgrade them. By default, the admin is a proxy admin contract deployed behind the scenes.
+UUPS and beacon proxies do not use admin addresses. UUPS proxies rely on an \_authorizeUpgrade function to be overridden to include access restriction to the upgrade mechanism, whereas beacon proxies are upgradable only by the owner of their corresponding beacon.

@@ -1,0 +1,6 @@
+#!/bin/bash
+set -euo pipefail
+min=$1
+max=$2
+rando=$(cat /inputs/latest | jq -r '.randomness' | tr 'a-z' 'A-Z')
+echo "ibase=16; obase=16; ${min:2} + ${rando} % (${max:2} - ${min:2})" | bc | tr -cd [:digit:]

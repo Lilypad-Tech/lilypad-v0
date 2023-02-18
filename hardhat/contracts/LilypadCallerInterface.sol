@@ -9,10 +9,6 @@ enum LilypadResultType {
 }
 
 interface LilypadCallerInterface {
-  function lilypadReceiver(
-    address _from,
-    uint _jobId,
-    LilypadResultType _resultType,
-    string memory _result
-  ) external;
+  function lilypadFulfilled(address _from, uint _jobId, LilypadResultType _resultType, string calldata _result) external;
+  function lilypadCancelled(address _from, uint _jobId, LilypadResultType _resultType, string calldata _errorMsg) external;
 }

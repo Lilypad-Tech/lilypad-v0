@@ -12,7 +12,8 @@ typechain-types
 
 # Hardhat files
 cache
-# artifacts
+artifacts
+.openzeppelin
 
 .terraform*
 .deps.mk

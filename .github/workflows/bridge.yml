@@ -36,5 +36,13 @@ jobs:
     - name: Build
       run: make build
 
+    - name: Archive
+      uses: actions/upload-artifact@v3
+      with:
+        path: |
+          bin
+          hardhat/artifacts
+          examples/artifacts
+
     - name: Test
       run: go test -v ./...

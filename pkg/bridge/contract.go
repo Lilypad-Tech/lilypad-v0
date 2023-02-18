@@ -132,7 +132,7 @@ func (r *realContract) ReadLogs(ctx context.Context, out chan<- ContractSubmitte
 	}
 
 	opts := bind.FilterOpts{Start: uint64(r.maxSeenBlock + 1), Context: ctx}
-	logs, err := r.contract.LilypadEventsFilterer.FilterNewBacalhauJobSubmitted(&opts, nil)
+	logs, err := r.contract.LilypadEventsFilterer.FilterNewBacalhauJobSubmitted(&opts)
 	if err != nil {
 		log.Ctx(ctx).Error().Err(err).Send()
 		return
@@ -146,7 +146,7 @@ func (r *realContract) ReadLogs(ctx context.Context, out chan<- ContractSubmitte
 		log.Ctx(ctx).Debug().
 			Stringer("txn", recvEvent.Raw.TxHash).
 			Uint64("block#", recvEvent.Raw.BlockNumber).
-			Str("spec", recvEvent.Spec).
+			Str("spec", recvEvent.Job.Spec).
 			Bool("removed", recvEvent.Raw.Removed).
 			Msg("Event")
 
@@ -154,18 +154,18 @@ func (r *realContract) ReadLogs(ctx context.Context, out chan<- ContractSubmitte
 			continue
 		}
 
-		if !ResultType(recvEvent.ResultType).Valid() {
-			log.Ctx(ctx).Warn().Uint8("resultType", recvEvent.ResultType).Msg("invalid ResultType")
+		if !ResultType(recvEvent.Job.ResultType).Valid() {
+			log.Ctx(ctx).Warn().Uint8("resultType", recvEvent.Job.ResultType).Msg("invalid ResultType")
 			continue
 		}
 
 		out <- &event{
 			orderId:         recvEvent.Raw.TxHash.Bytes(),
-			orderOwner:      recvEvent.RequestorContract.Bytes(),
-			orderNumber:     recvEvent.Id.Int64(),
-			orderResultType: recvEvent.ResultType,
+			orderOwner:      recvEvent.Job.Requestor.Bytes(),
+			orderNumber:     recvEvent.Job.Id.Int64(),
+			orderResultType: recvEvent.Job.ResultType,
 			state:           OrderStateSubmitted,
-			jobSpec:         []byte(recvEvent.Spec),
+			jobSpec:         []byte(recvEvent.Job.Spec),
 		}
 
 		r.maxSeenBlock = recvEvent.Raw.BlockNumber
