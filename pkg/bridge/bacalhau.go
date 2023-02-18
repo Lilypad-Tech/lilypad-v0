@@ -108,33 +108,11 @@ func (runner *bacalhauRunner) FindCompleted(ctx context.Context, jobs []Bacalhau
 			if ok, err := jobStillRunning(bacjob.Status.State); !ok || err != nil {
 				log.Ctx(ctx).Debug().Err(err).Msg("Bacalhau job still in progress")
 			} else if ok, err := jobComplete(bacjob.Status.State); ok && err == nil {
-				node := maps.Values(bacjob.Status.State.Nodes)[0]
-				shard := maps.Values(node.Shards)[0]
-				output := shard.RunOutput
-
-				results, err := runner.Client.GetResults(ctx, bacjob.Metadata.ID)
-				if err != nil {
-					log.Ctx(ctx).Error().Err(err).Msg("Unable to get job results")
-					continue
-				}
-
-				var foundResult bool = false
-				for _, result := range results {
-					if result.Data.CID != "" {
-						resultCid, err := cid.Parse(result.Data.CID)
-						if err != nil {
-							log.Ctx(ctx).Error().Str("cid", result.Data.CID).Err(err).Msg("Unable to parse result CID")
-							continue
-						}
-
-						log.Ctx(ctx).Info().Err(err).Msg("Bacalhau job completed")
-						completed = append(completed, j.Completed(resultCid, output.STDOUT, output.STDERR, output.ExitCode))
-						foundResult = true
-						break
-					}
-				}
-
-				if !foundResult {
+				found, cid, stdout, stderr, exitcode := getResult(ctx, bacjob.Status.State.Nodes)
+				if found {
+					log.Ctx(ctx).Info().Err(err).Msg("Bacalhau job completed")
+					completed = append(completed, j.Completed(cid, stdout, stderr, exitcode))
+				} else {
 					log.Ctx(ctx).Error().Msg("No reuslts found for completed job")
 					failed = append(failed, j.JobError())
 				}
@@ -163,6 +141,34 @@ func (runner *bacalhauRunner) FindCompleted(ctx context.Context, jobs []Bacalhau
 	}
 
 	return completed, failed
+}
+
+func getResult(ctx context.Context, nodes map[string]model.JobNodeState) (found bool, result cid.Cid, stdout, stderr string, exitcode int) {
+	for _, node := range maps.Values(nodes) {
+		for _, shard := range maps.Values(node.Shards) {
+			if shard.State == model.JobStateCompleted {
+				output := shard.RunOutput
+				storage := &shard.PublishedResult
+
+				var err error
+				result, err = cid.Parse(storage.CID)
+				if err != nil {
+					log.Ctx(ctx).Error().Str("cid", storage.CID).Err(err).Msg("Unable to parse result CID")
+					continue
+				}
+
+				if output != nil {
+					stdout = output.STDOUT
+					stderr = output.STDERR
+					exitcode = output.ExitCode
+				}
+
+				return true, result, stdout, stderr, exitcode
+			}
+		}
+	}
+
+	return
 }
 
 var _ JobRunner = (*bacalhauRunner)(nil)
