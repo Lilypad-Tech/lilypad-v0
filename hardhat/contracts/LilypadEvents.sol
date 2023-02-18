@@ -106,19 +106,19 @@ contract LilypadEvents is Initializable, AccessControlUpgradeable, UUPSUpgradeab
         LilypadCallerInterface(_to).lilypadFulfilled(address(this), _jobId, _resultType, _result);
     }
 
-    function returnBacalhauError(address _to, uint _jobId, LilypadResultType _resultType, string memory _errorMsg) public onlyRole(UPGRADER_ROLE) {
+    function returnBacalhauError(address _to, uint _jobId, string memory _errorMsg) public onlyRole(UPGRADER_ROLE) {
         BacalhauJobResult memory jobResult = BacalhauJobResult({
             requestor: _to,
             id: _jobId,
             success: false,
             result: _errorMsg,
-            resultType: _resultType
+            resultType: LilypadResultType.StdErr
         });
         bacalhauJobResultHistory.push(jobResult);
         bacalhauJobResultByAddress[_to].push(jobResult);
 
         emit BacalhauJobResultsReturned(jobResult);
-        LilypadCallerInterface(_to).lilypadCancelled(address(this), _jobId, _resultType, _errorMsg);
+        LilypadCallerInterface(_to).lilypadCancelled(address(this), _jobId, _errorMsg);
     }
 
     function fetchAllJobs() public view returns (BacalhauJob[] memory) {

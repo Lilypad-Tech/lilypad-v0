@@ -67,7 +67,6 @@ contract DrandCaller is LilypadCallerInterface {
     function lilypadCancelled(
         address _from,
         uint _jobId,
-        LilypadResultType _resultType,
         string calldata _errorMsg
     ) external override {
         require(_from == address(bridge));

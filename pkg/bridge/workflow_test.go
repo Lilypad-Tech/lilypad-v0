@@ -211,9 +211,9 @@ func (suite *WorkflowTestSuite) TestCompletedEventsAreReloaded() {
 }
 
 func (suite *WorkflowTestSuite) TestErroredEventsAreReloaded() {
-	suite.ReloadEventTest(exampleEvent().JobCreated(model.NewJob()).JobError())
+	suite.ReloadEventTest(exampleEvent().JobCreated(model.NewJob()).JobError(""))
 }
 
 func (suite *WorkflowTestSuite) TestFailedEventsAreReloaded() {
-	suite.ReloadEventTest(exampleEvent().JobCreated(model.NewJob()).Failed())
+	suite.ReloadEventTest(exampleEvent().JobCreated(model.NewJob()).Failed(""))
 }

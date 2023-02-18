@@ -170,7 +170,7 @@ func (workflow *Workflow) ProcessEvent(ctx context.Context, event Event) (result
 		if ShouldRetry(event) {
 			result = event.Retry()
 		} else {
-			result = event.Failed()
+			result = event.Failed(event.Error())
 		}
 	case OrderStateFailed:
 		result, err = workflow.Contract.Refund(ctx, event.(ContractFailedEvent))
@@ -188,7 +188,7 @@ func (workflow *Workflow) ProcessEvent(ctx context.Context, event Event) (result
 			result = e
 			wait = workflow.getRetryTime(e)
 		} else {
-			result = event.(ContractSubmittedEvent).Failed()
+			result = event.(ContractSubmittedEvent).Failed(err.Error())
 		}
 	}
 

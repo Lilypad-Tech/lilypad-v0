@@ -96,6 +96,27 @@ func (r *realContract) Complete(ctx context.Context, event BacalhauJobCompletedE
 	return event.Paid(), nil
 }
 
+// Refund implements SmartContract
+func (r *realContract) Refund(ctx context.Context, event ContractFailedEvent) (ContractRefundedEvent, error) {
+	opts, err := r.prepareTransaction(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	txn, err := r.contract.LilypadEventsTransactor.ReturnBacalhauError(
+		opts,
+		event.OrderRequestor(),
+		big.NewInt(event.OrderNumber()),
+		event.Error(),
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	log.Ctx(ctx).Info().Stringer("txn", txn.Hash()).Msg("Error returned")
+	return event.Refunded(), nil
+}
+
 // Listen implements SmartContract
 func (r *realContract) Listen(ctx context.Context, out chan<- ContractSubmittedEvent) error {
 	scheduler := gocron.NewScheduler(time.UTC)
@@ -170,11 +191,6 @@ func (r *realContract) ReadLogs(ctx context.Context, out chan<- ContractSubmitte
 
 		r.maxSeenBlock = recvEvent.Raw.BlockNumber
 	}
-}
-
-// Refund implements SmartContract
-func (r *realContract) Refund(ctx context.Context, e ContractFailedEvent) (ContractRefundedEvent, error) {
-	return e.Refunded(), nil
 }
 
 func NewContract(contractAddr common.Address, privateKey *ecdsa.PrivateKey) (SmartContract, error) {

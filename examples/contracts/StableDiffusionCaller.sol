@@ -69,7 +69,7 @@ contract StableDiffusionCaller is LilypadCallerInterface {
         delete prompts[_jobId];
     }
 
-    function lilypadCancelled(address _from, uint _jobId, LilypadResultType, string calldata _errorMsg) external override {
+    function lilypadCancelled(address _from, uint _jobId, string calldata _errorMsg) external override {
         require(_from == address(bridge)); //really not secure
         console.log(_errorMsg);
         delete prompts[_jobId];

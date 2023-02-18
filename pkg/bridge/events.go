@@ -69,7 +69,7 @@ type ContractSubmittedEvent interface {
 	OrderRequestor() common.Address
 	Spec() (model.Spec, error)
 
-	Failed() ContractFailedEvent
+	Failed(err string) ContractFailedEvent
 	JobCreated(*model.Job) BacalhauJobRunningEvent
 }
 
@@ -82,7 +82,7 @@ type BacalhauJobRunningEvent interface {
 	JobID() string
 
 	Completed(result cid.Cid, stdout, stderr string, exitcode int) BacalhauJobCompletedEvent
-	JobError() BacalhauJobFailedEvent
+	JobError(err string) BacalhauJobFailedEvent
 }
 
 type BacalhauJobCompletedEvent interface {
@@ -105,6 +105,8 @@ type BacalhauJobFailedEvent interface {
 
 	BacalhauJobRunningEvent
 
+	Error() string
+
 	Retry() ContractSubmittedEvent
 }
 
@@ -113,6 +115,8 @@ type ContractFailedEvent interface {
 	Retryable
 
 	ContractSubmittedEvent
+
+	Error() string
 
 	Refunded() ContractRefundedEvent
 }
@@ -207,6 +211,11 @@ func (e *event) StdOut() string {
 	return e.jobStdout
 }
 
+// Error implements BacalhauJobFailedEvent
+func (e *event) Error() string {
+	return e.jobStderr
+}
+
 // Records that a ContractSubmittedEvent has been sent to the Bacalhau network
 // as a job.
 func (e *event) JobCreated(job *model.Job) BacalhauJobRunningEvent {
@@ -246,8 +255,9 @@ func (e *event) Completed(result cid.Cid, stdout, stderr string, exitcode int) B
 }
 
 // Records that a running Bacalhau job has failed.
-func (e *event) JobError() BacalhauJobFailedEvent {
+func (e *event) JobError(err string) BacalhauJobFailedEvent {
 	e.state = OrderStateJobError
+	e.jobStderr = err
 	return e
 }
 
@@ -259,8 +269,9 @@ func (e *event) Retry() ContractSubmittedEvent {
 }
 
 // Records that a contract has failed permanently.
-func (e *event) Failed() ContractFailedEvent {
+func (e *event) Failed(err string) ContractFailedEvent {
 	e.state = OrderStateFailed
+	e.jobStderr = err
 	return e
 }
 

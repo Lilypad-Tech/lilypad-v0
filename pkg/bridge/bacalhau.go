@@ -108,17 +108,22 @@ func (runner *bacalhauRunner) FindCompleted(ctx context.Context, jobs []Bacalhau
 			if ok, err := jobStillRunning(bacjob.Status.State); !ok || err != nil {
 				log.Ctx(ctx).Debug().Err(err).Msg("Bacalhau job still in progress")
 			} else if ok, err := jobComplete(bacjob.Status.State); ok && err == nil {
-				found, cid, stdout, stderr, exitcode := getResult(ctx, bacjob.Status.State.Nodes)
+				found, cid, stdout, stderr, exitcode := getResult(ctx, bacjob.Status.State.Nodes, model.JobStateCompleted)
 				if found {
 					log.Ctx(ctx).Info().Err(err).Msg("Bacalhau job completed")
 					completed = append(completed, j.Completed(cid, stdout, stderr, exitcode))
 				} else {
 					log.Ctx(ctx).Error().Msg("No reuslts found for completed job")
-					failed = append(failed, j.JobError())
+					failed = append(failed, j.JobError("No results found for completed job"))
 				}
 			} else if ok, err := jobHasErrors(bacjob.Status.State); !ok || err != nil {
+				found, _, _, stderr, _ := getResult(ctx, bacjob.Status.State.Nodes, model.JobStateError)
+				if !found {
+					stderr = "Bacalhau job failed"
+				}
+
 				log.Ctx(ctx).Info().Err(err).Msg("Bacalhau job failed")
-				failed = append(failed, j.JobError())
+				failed = append(failed, j.JobError(stderr))
 			} else {
 				// This would be a programming error – we haven't taken account
 				// of the states properly.
@@ -136,17 +141,21 @@ func (runner *bacalhauRunner) FindCompleted(ctx context.Context, jobs []Bacalhau
 		// paying them...
 		if !found {
 			log.Ctx(ctx).Error().Msg("Bacalhau job not found")
-			failed = append(failed, j.JobError())
+			failed = append(failed, j.JobError("Bacalhau job not found"))
 		}
 	}
 
 	return completed, failed
 }
 
-func getResult(ctx context.Context, nodes map[string]model.JobNodeState) (found bool, result cid.Cid, stdout, stderr string, exitcode int) {
+func getResult(
+	ctx context.Context,
+	nodes map[string]model.JobNodeState,
+	state model.JobStateType,
+) (found bool, result cid.Cid, stdout, stderr string, exitcode int) {
 	for _, node := range maps.Values(nodes) {
 		for _, shard := range maps.Values(node.Shards) {
-			if shard.State == model.JobStateCompleted {
+			if shard.State == state {
 				output := shard.RunOutput
 				storage := &shard.PublishedResult
 

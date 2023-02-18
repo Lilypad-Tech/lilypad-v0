@@ -30,7 +30,7 @@ var SuccssfulFind RunnerFindCompletedHandler = func(ctx context.Context, jobs []
 var FailedFind RunnerFindCompletedHandler = func(ctx context.Context, jobs []BacalhauJobRunningEvent) ([]BacalhauJobCompletedEvent, []BacalhauJobFailedEvent) {
 	failed := []BacalhauJobFailedEvent{}
 	for _, job := range jobs {
-		failed = append(failed, job.JobError())
+		failed = append(failed, job.JobError(""))
 	}
 	return nil, failed
 }
