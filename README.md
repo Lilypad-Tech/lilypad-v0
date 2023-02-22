@@ -14,5 +14,5 @@ FVM Hyperspace Contract Address: 0x75B01cAeFF294f10d21ff3429C683230e3d8C9B6
 
 #buildwithbacalhau
 
+![image](https://user-images.githubusercontent.com/12529822/220625332-b0e6a08a-b77d-41f7-90a8-248852a353c8.png)
 
-[Lilypad Mascot](https://bafybeid6oeuyu2rwe2hvphisbzkti2pi32lncg2bziinqo4lnkmjtwdht4.ipfs.w3s.link/outputs/image0.png)
