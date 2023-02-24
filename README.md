@@ -7,7 +7,7 @@ The work is primarily initially focussed on FEVM contract target.
 
 **We're live on FVM Hyperspace**
 
-Contract Address: 0x75B01cAeFF294f10d21ff3429C683230e3d8C9B6
+Contract Address: `0x75B01cAeFF294f10d21ff3429C683230e3d8C9B6`
 
 See the examples folder for how to use this in your own contracts!
 
@@ -27,14 +27,14 @@ See the examples folder for how to use this in your own contracts!
     |:---:|:---:|:---:|
     | `_from` | `address` | The address of the calling contract, to which success or failure will be passed back. You should probably use address(this) from your contract. |
     | `_spec` | `string` | A Bacalhau job spec in JSON format. See below for more information on creating a job spec. |
-    | `_resultType` | `LilypadResultType` | The type of result that you want to be returned. If you specify CID, the result tree will come back as a retrievable IPFS CID. If you specify StdOut, StdErr or ExitCode, those raw values output from the job will be returned. |
+    | `_resultType` | [`LilypadResultType`](./hardhat/contracts/LilypadCallerInterface.sol#L4-L9) | The type of result that you want to be returned. If you specify CID, the result tree will come back as a retrievable IPFS CID. If you specify StdOut, StdErr or ExitCode, those raw values output from the job will be returned. |
 
 ### What do I need to know to run Bacalhau?
 
 *   Bacalhau is language-agnostic, and supports [Docker](https://docs.bacalhau.org/getting-started/docker-workload-onboarding) or [WASM](https://docs.bacalhau.org/getting-started/wasm-workload-onboarding) workloads. As long as you can run your executable in a container, you can run it in Bacalhau.
 *   You need to supply a Bacalhau job spec. To create a job spec, you can:
-    *   Run a Bacalhau job successfully, and then get the job spec back using bacalhau describe <job\_id> --format=json.
-    *   Generate a job spec without running anything, using bacalhau docker run –dry-run.
+    *   Run a Bacalhau job successfully, and then get the job spec back using `bacalhau describe <job_id> --format=json`.
+    *   Generate a job spec without running anything, using `bacalhau docker run --dry-run`.
     *   Writing a job spec by hand, by using our [schema](https://schema.bacalhau.org) as a guide.
 *   What can I do with Bacalhau now? You can:
     *   read from IPFS, Filecoin, or URLs
