@@ -93,22 +93,19 @@ func (runner *bacalhauRunner) FindCompleted(ctx context.Context, jobs []Bacalhau
 		found := false
 
 		for _, bacjob := range bacjobs {
-			if bacjob.Metadata.ID != j.JobID() {
+			if bacjob.Job.Metadata.ID != j.JobID() {
 				continue
 			}
 
 			found = true
-			totalShards := job.GetJobTotalExecutionCount(bacjob)
-			jobStillRunning := job.WaitForTerminalStates(totalShards)
-			jobHasErrors := job.WaitThrowErrors([]model.JobStateType{model.JobStateError})
-			jobComplete := job.WaitForJobStates(map[model.JobStateType]int{
-				model.JobStateCompleted: totalShards,
-			})
+			jobStillRunning := job.WaitForTerminalStates()
+			jobHasErrors := job.WaitExecutionsThrowErrors([]model.ExecutionStateType{model.ExecutionStateFailed})
+			jobComplete := job.WaitForSuccessfulCompletion()
 
-			if ok, err := jobStillRunning(bacjob.Status.State); !ok || err != nil {
+			if ok, err := jobStillRunning(bacjob.State); !ok || err != nil {
 				log.Ctx(ctx).Debug().Err(err).Msg("Bacalhau job still in progress")
-			} else if ok, err := jobComplete(bacjob.Status.State); ok && err == nil {
-				found, cid, stdout, stderr, exitcode := getResult(ctx, bacjob.Status.State.Nodes, model.JobStateCompleted)
+			} else if ok, err := jobComplete(bacjob.State); ok && err == nil {
+				found, cid, stdout, stderr, exitcode := getResult(ctx, bacjob.State.Shards, model.ShardStateCompleted)
 				if found {
 					log.Ctx(ctx).Info().Err(err).Msg("Bacalhau job completed")
 					completed = append(completed, j.Completed(cid, stdout, stderr, exitcode))
@@ -116,8 +113,8 @@ func (runner *bacalhauRunner) FindCompleted(ctx context.Context, jobs []Bacalhau
 					log.Ctx(ctx).Error().Msg("No reuslts found for completed job")
 					failed = append(failed, j.JobError("No results found for completed job"))
 				}
-			} else if ok, err := jobHasErrors(bacjob.Status.State); !ok || err != nil {
-				found, _, _, stderr, _ := getResult(ctx, bacjob.Status.State.Nodes, model.JobStateError)
+			} else if ok, err := jobHasErrors(bacjob.State); !ok || err != nil {
+				found, _, _, stderr, _ := getResult(ctx, bacjob.State.Shards, model.ShardStateCompleted)
 				if !found {
 					stderr = "Bacalhau job failed"
 				}
@@ -150,14 +147,14 @@ func (runner *bacalhauRunner) FindCompleted(ctx context.Context, jobs []Bacalhau
 
 func getResult(
 	ctx context.Context,
-	nodes map[string]model.JobNodeState,
-	state model.JobStateType,
+	shards map[int]model.ShardState,
+	state model.ShardStateType,
 ) (found bool, result cid.Cid, stdout, stderr string, exitcode int) {
-	for _, node := range maps.Values(nodes) {
-		for _, shard := range maps.Values(node.Shards) {
+	for _, shard := range maps.Values(shards) {
+		for _, execution := range shard.Executions {
 			if shard.State == state {
-				output := shard.RunOutput
-				storage := &shard.PublishedResult
+				output := execution.RunOutput
+				storage := &execution.PublishedResult
 
 				var err error
 				result, err = cid.Parse(storage.CID)

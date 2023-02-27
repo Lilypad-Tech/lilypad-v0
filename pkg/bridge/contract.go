@@ -194,7 +194,7 @@ func (r *realContract) ReadLogs(ctx context.Context, out chan<- ContractSubmitte
 }
 
 func NewContract(contractAddr common.Address, privateKey *ecdsa.PrivateKey) (SmartContract, error) {
-	rpcEndpoint := "wss://wss.hyperspace.node.glif.io/apigw/lotus/rpc/v0"
+	rpcEndpoint := "wss://wss.hyperspace.node.glif.io/apigw/lotus/rpc/v1"
 
 	log.Debug().Str("endpoint", rpcEndpoint).Msg("Dial")
 	client, err := ethclient.Dial(rpcEndpoint)
