@@ -40,6 +40,21 @@ See the examples folder for how to use this in your own contracts!
     *   read from IPFS, Filecoin, or URLs
     *   write into Estuary or IPFS   
 
+
+### Any Example Jobs?
+
+We have a full complement of exmple jobs you can leverage on the [Bacalhau Docs Site](https://docs.bacalhau.org/)
+Try out
+- YOLO
+- OCR
+- Video Editing
+- and many, many more!
+
+We'd also LOVE to hear about what use cases you have 
+Contact us in the FilecoinProject Slack #bacalhau channel
+
+Contributions to this repo would also earn you many 5/5 Stable Diffusion Rainbow Unicorns (and be gratefully recieved)!  
+
 ❤️ Bacalhau team: off-chain decentralised compute ❤️
 
 #buildwithbacalhau
