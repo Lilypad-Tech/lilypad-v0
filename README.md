@@ -51,11 +51,15 @@ Try out
 - Video Editing
 - and many, many more!
 
-We'd also LOVE to hear about what use cases you have - contact us in the FilecoinProject Slack #bacalhau channel
+### Get in touch
+
+We'd also LOVE to hear about what use cases you have - contact us in the [FilecoinProject Slack](https://filecoinproject.slack.com/) #bacalhau or #bacalhau-lilypad channel
 
 Contributions to this repo would also earn you many 5/5 Stable Diffusion Rainbow Unicorns (and be gratefully recieved)!  
 
-❤️ Bacalhau team: off-chain decentralised compute ❤️
+### Bacalhau team
+
+❤️ Bacalhau team: off-chain filecoin-native decentralised compute ❤️
 
 #buildwithbacalhau
 
