@@ -10,7 +10,7 @@ npm install
 
 Use remix or hardhat to deploy the contracts or find them at the following addresses on FEVM Hyperspace testnetwork:
 
-(coming soon)
+Stable Diffusion: 0x89Bb974a9609EfD2f4d4AaC13b4f0538159EB0e2
 
 # Sample Hardhat Project
 
