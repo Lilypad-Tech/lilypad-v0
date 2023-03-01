@@ -8,7 +8,7 @@ git clone
 npm install
 ```
 
-Use hardhat to deploy the contracts or find them at the following addresses on FEVM Hyperspace testnetwork:
+Use remix or hardhat to deploy the contracts or find them at the following addresses on FEVM Hyperspace testnetwork:
 
 (coming soon)
 
