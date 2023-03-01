@@ -67,7 +67,7 @@ We'd also LOVE to hear about what use cases you have - contact us in the [Fileco
 
 Contributions to this repo would also earn you many 5/5 Stable Diffusion Rainbow Unicorns (and be gratefully recieved)!  
 
-### Bacalhau team
+### Thanks for your interest!
 
 ❤️ Bacalhau team: off-chain filecoin-native decentralised compute ❤️
 
