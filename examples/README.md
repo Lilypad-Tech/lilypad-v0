@@ -12,6 +12,8 @@ Use remix or hardhat to deploy the contracts or find them at the following addre
 
 Stable Diffusion: 0x89Bb974a9609EfD2f4d4AaC13b4f0538159EB0e2
 
+Open Stable Diffusion Contract in Remix [here](https://remix.ethereum.org/bacalhau-project/lilypad/blob/main/contracts/StableDiffusionCaller.sol)
+
 # Sample Hardhat Project
 
 This project demonstrates a basic Hardhat use case. It comes with a sample contract, a test for that contract, and a script that deploys that contract.
