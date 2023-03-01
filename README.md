@@ -43,7 +43,7 @@ See the examples folder for how to use this in your own contracts!
 
 ### Any Example Jobs?
 
-We have a full complement of exmple jobs you can leverage on the [Bacalhau Docs Site](https://docs.bacalhau.org/)
+We have a full complement of example jobs you can leverage on the [Bacalhau Docs Site](https://docs.bacalhau.org/)
 
 Try out
 - YOLO
