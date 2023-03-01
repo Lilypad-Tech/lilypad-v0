@@ -18,7 +18,7 @@ const config: HardhatUserConfig = {
   networks: {
     hardhat: {},
     filecoinHyperspace: {
-      url: 'https://api.hyperspace.node.glif.io/rpc/v1', //https://beryx.zondax.ch/ //chainstack
+      url: 'https://api.hyperspace.node.glif.io/rpc/v1', //https://filecoin-hyperspace.chainstacklabs.com/rpc/v1
       chainId: 3141,
       accounts: [walletPrivateKey],
     },
