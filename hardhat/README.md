@@ -1,11 +1,7 @@
 # Lilypad
 
-Contract address for LilypadEvents.sol is 0xaB35C095Fea79Ee42eBF57146cE5FED99C094C49
+Contract address for (the upgrade proxy of) LilypadEvents.sol is 0x75B01cAeFF294f10d21ff3429C683230e3d8C9B6
 (changelog)
-
-Currently 2 LilypadEventsv0.sol contracts already deployed to FVM Hyperspace:
-0x4E5811CC840b9610580D64CDceDf25bCcD4a6D66 (has events already)
-0xaeFAfC4Ca86B0d638F053DA91787a558aCD51eB9 (clean deploy, no events)
 
 You need a .env file with your private key for a wallet to run this
 
