@@ -12,7 +12,9 @@ Use remix or hardhat to deploy the contracts or find them at the following addre
 
 Stable Diffusion: 0x89Bb974a9609EfD2f4d4AaC13b4f0538159EB0e2
 
-Open Stable Diffusion Contract in Remix [here](https://remix.ethereum.org/bacalhau-project/lilypad/blob/main/contracts/StableDiffusionCaller.sol)
+See it on Block Explorer [here](https://fvm.starboard.ventures/contracts/0x89Bb974a9609EfD2f4d4AaC13b4f0538159EB0e2)
+
+Open Stable Diffusion Contract in Remix [here](https://remix.ethereum.org/bacalhau-project/lilypad/blob/main/examples/contracts/StableDiffusionCaller.sol)
 
 # Sample Hardhat Project
 
