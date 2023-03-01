@@ -54,7 +54,8 @@ Try out
 ### More Resources
 
 See a video of this project in action [here](https://youtu.be/B0l0gFYxADY)
-[Read more here](https://bit.ly/project-lilypad)
+
+Read more and see the presentation slides [here](https://bit.ly/project-lilypad)
 
 ### Get in touch
 
