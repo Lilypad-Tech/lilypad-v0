@@ -51,6 +51,11 @@ Try out
 - Video Editing
 - and many, many more!
 
+### More Resources
+
+See a video of this project in action [here](https://youtu.be/B0l0gFYxADY)
+[Read more here](https://bit.ly/project-lilypad)
+
 ### Get in touch
 
 We'd also LOVE to hear about what use cases you have - contact us in the [FilecoinProject Slack](https://filecoinproject.slack.com/) #bacalhau or #bacalhau-lilypad channel
