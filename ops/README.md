@@ -19,3 +19,9 @@ cd ops
 gcloud auth login
 terraform apply
 ```
+
+## Checking that lilypad is running
+
+```bash
+gcloud compute ssh --zone=us-central1-a --project=bacalhau-production lilypad-vm-0 -- journalctl --unit=lilypad -f
+```
