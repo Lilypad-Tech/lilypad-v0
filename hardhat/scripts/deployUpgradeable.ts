@@ -1,14 +1,16 @@
 import { ethers, upgrades } from 'hardhat';
 
-import type { LilypadEvents } from '../typechain-types/LilypadEvents';
-import type { LilypadEvents__factory } from '../typechain-types/factories/LilypadEvents__factory';
+import type { LilypadEvents } from '../typechain-types/contracts/LilypadEvents';
+import type { LilypadEvents__factory } from '../typechain-types/factories/contracts/LilypadEvents__factory';
 
 async function main() {
+  if(!process.env.WALLET_PRIVATE_KEY) throw new Error('WALLET_PRIVATE_KEY not set in .env file.')
+
   console.log('LilypadEvents deploying....');
 
   // Multisig wallet required here in future.
   const owner = new ethers.Wallet(
-    process.env.WALLET_PRIVATE_KEY || 'undefined',
+    process.env.WALLET_PRIVATE_KEY,
     ethers.provider
   );
 

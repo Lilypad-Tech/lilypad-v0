@@ -1,9 +1,11 @@
 {
   "name": "lilypad",
   "version": "0.1.0",
+  "scripts": {
+    "node": "hardhat node --network hardhat"
+  },
   "devDependencies": {
     "@nomicfoundation/hardhat-toolbox": "^2.0.1",
-    "@nomiclabs/hardhat-ethers": "^2.2.2",
     "@openzeppelin/hardhat-upgrades": "^1.22.1",
     "ethers": "^5.7.2",
     "hardhat": "^2.12.6",
@@ -11,8 +13,11 @@
     "npm": "^9.4.0"
   },
   "dependencies": {
-    "@openzeppelin/contracts-upgradeable": "^4.8.1",
-    "@openzeppelin/contracts": "^4.8.1",
-    "dotenv": "^16.0.3"
+    "@openzeppelin/contracts": "^4.8.2",
+    "@openzeppelin/contracts-upgradeable": "^4.8.2",
+    "@types/minimist": "^1.2.2",
+    "dotenv": "^16.0.3",
+    "hardhat-deploy": "^0.11.25",
+    "minimist": "^1.2.8"
   }
 }

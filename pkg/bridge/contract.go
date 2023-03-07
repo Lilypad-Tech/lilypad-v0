@@ -5,14 +5,14 @@ import (
 	"crypto/ecdsa"
 	"fmt"
 	"math/big"
-	"time"
 
 	"github.com/bacalhau-project/lilypad/hardhat/artifacts/contracts/LilypadEvents.sol"
+	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
-	"github.com/go-co-op/gocron"
 	"github.com/rs/zerolog/log"
 )
 
@@ -26,6 +26,7 @@ type SmartContract interface {
 
 type realContract struct {
 	client     *ethclient.Client
+	address    common.Address
 	contract   *LilypadEvents.LilypadEvents
 	privateKey *ecdsa.PrivateKey
 
@@ -119,17 +120,36 @@ func (r *realContract) Refund(ctx context.Context, event ContractFailedEvent) (C
 
 // Listen implements SmartContract
 func (r *realContract) Listen(ctx context.Context, out chan<- ContractSubmittedEvent) error {
-	scheduler := gocron.NewScheduler(time.UTC)
-	_, err := scheduler.Every(15*time.Second).SingletonMode().Do(r.ReadLogs, ctx, out)
+	query := ethereum.FilterQuery{
+		Addresses: []common.Address{r.address},
+	}
+	logs := make(chan types.Log)
+	sub, err := r.client.SubscribeFilterLogs(context.Background(), query, logs)
 	if err != nil {
 		return err
 	}
 
-	scheduler.StartAsync()
-	defer scheduler.Stop()
+	for {
+		select {
+		case err := <-sub.Err():
+			fmt.Printf("Error: %+v", err)
+		case vLog := <-logs:
+			// vLog is the types.log
+			fmt.Printf("SAW EVENT: %+v", vLog)
+		}
+	}
 
-	<-ctx.Done()
-	return nil
+	// scheduler := gocron.NewScheduler(time.UTC)
+	// _, err := scheduler.Every(15*time.Second).SingletonMode().Do(r.ReadLogs, ctx, out)
+	// if err != nil {
+	// 	return err
+	// }
+
+	// scheduler.StartAsync()
+	// defer scheduler.Stop()
+
+	// <-ctx.Done()
+	// return nil
 }
 
 func (r *realContract) ReadLogs(ctx context.Context, out chan<- ContractSubmittedEvent) {
@@ -212,5 +232,11 @@ func NewContract(contractAddr common.Address, privateKey *ecdsa.PrivateKey) (Sma
 		return nil, err
 	}
 
-	return &realContract{client, contract, privateKey, number}, nil
+	return &realContract{
+		client:       client,
+		address:      contractAddr,
+		contract:     contract,
+		privateKey:   privateKey,
+		maxSeenBlock: number,
+	}, nil
 }
