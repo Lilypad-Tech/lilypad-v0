@@ -5,7 +5,8 @@ This project harnesses the power of onchain compute with off-chain computations 
 
 The work is primarily initially focussed on FEVM contract target.
 
-![Project Lilypad in 3 mins (1)](https://user-images.githubusercontent.com/12529822/222213584-269b3417-7845-48dc-9843-ef3f4e71b0dc.png)
+![Project Lilypad in 3 mins (2)](https://user-images.githubusercontent.com/12529822/223378333-97acdeb8-7a2a-4817-9365-6471fc4fe5a2.png)
+b3417-7845-48dc-9843-ef3f4e71b0dc.png)
 
 
 
