@@ -8,6 +8,7 @@ The work is primarily initially focussed on FEVM contract target.
 
 ![Project Lilypad in 3 mins (2)](https://user-images.githubusercontent.com/12529822/223378567-91e08ae4-9859-441d-bbfe-d1b7516c6543.png)
 
+[![IMAGE ALT TEXT](http://img.youtube.com/vi/9lF7omNEK/0.jpg)](https://www.youtube.com/watch?v=9lF7omNEK "Project Lilypad")
 
 
 ### We're live on FVM Hyperspace
