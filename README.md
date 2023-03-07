@@ -12,7 +12,7 @@ The work is primarily initially focussed on FEVM contract target.
 ** YouTube Video Link **
 
 
-<p align="center"> [![YouTube Video](http://img.youtube.com/vi/9lF7omNEK-c/0.jpg)](https://www.youtube.com/watch?v=9lF7omNEK-c "Project Lilypad") </p>
+[![YouTube Video](http://img.youtube.com/vi/9lF7omNEK-c/0.jpg)](https://www.youtube.com/watch?v=9lF7omNEK-c "Project Lilypad")
 
 
 ### We're live on FVM Hyperspace
