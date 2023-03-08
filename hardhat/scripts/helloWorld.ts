@@ -1,6 +1,13 @@
 import hre, { ethers } from 'hardhat';
+import {
+  BigNumber,
+} from 'ethers';
 import minimist from 'minimist';
 import type { LilypadEvents } from '../typechain-types/contracts/LilypadEvents';
+
+import {
+  JobSpec,
+} from './tools'
 
 const args = minimist(process.argv, {
   default:{
@@ -20,7 +27,13 @@ async function main() {
   console.log(`have accounts`)
   const trx = await contract
     .connect(adminSigner)
-    .runBacalhauJob(admin, "{}", 0)
+    .runBacalhauJob(admin, JobSpec({
+      image: 'ubuntu',
+      entrypoint: [
+        'echo',
+        'hello world',
+      ],
+    }), 0)
   console.log(`have trx: ${trx.hash}`)
   const receipt = await trx.wait()
   console.log(`have receipt: ${receipt.status}`)

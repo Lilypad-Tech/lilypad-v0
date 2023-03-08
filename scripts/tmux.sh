@@ -33,6 +33,9 @@ function start() {
 
   export WALLET_PRIVATE_KEY=$WALLET_PRIVATE_KEY_DEV
   export CONTRACT_ADDRESS=$CONTRACT_ADDRESS_DEV
+  export DEPLOYED_CONTRACT_ADDRESS=$CONTRACT_ADDRESS_DEV
+  export JSON_RPC_ENDPOINT=http://127.0.0.1:8545
+  export LOG_LEVEL=debug
 
   # get the size of the window and create a session at that size
   local screensize=$(stty size)
@@ -47,9 +50,10 @@ function start() {
   tmux select-pane -t 0
   tmux split-window -v -d
 
+  tmux send-keys -t 1 'cd hardhat && npm run node' C-m
   tmux send-keys -t 0 'cd hardhat && sleep 5' C-m
   tmux send-keys -t 0 'npx hardhat run --network localhost scripts/deployUpgradeable.ts' C-m
-  tmux send-keys -t 1 'cd hardhat && npm run node' C-m
+  tmux send-keys -t 0 'npx hardhat run --network localhost scripts/helloWorld.ts'
   
   tmux -2 attach-session -t $TMUX_SESSION
 }
