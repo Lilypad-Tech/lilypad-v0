@@ -21,7 +21,7 @@ Contract Address: `0x75B01cAeFF294f10d21ff3429C683230e3d8C9B6`
 
 See it on Block Explorer [here](https://fvm.starboard.ventures/contracts/0x75B01cAeFF294f10d21ff3429C683230e3d8C9B6) 
 
-Open it in Remix [here](https://remix.ethereum.org/bacalhau-project/lilypad/blob/main/contracts/LilypadEvents.sol)
+Open it in Remix [here](https://remix.ethereum.org/bacalhau-project/lilypad/blob/main/hardhat/contracts/LilypadEvents.sol)
 
 See the examples folder for how to use this in your own contracts!
 
