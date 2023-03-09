@@ -8,10 +8,10 @@ export GOOS ?= $(shell go env GOOS)
 export GOARCH ?= $(shell go env GOARCH)
 export GOPATH ?= $(shell go env GOPATH)
 
-HOMEBREW_ROOT := $(shell brew config | grep HOMEBREW_PREFIX | cut -d: -f2)
-PROTOC_BREW := ${HOMEBREW_ROOT}/Cellar/protoc-gen-go
-${PROTOC_BREW}:
-	brew install protoc-gen-go
+PROTOC := ${GOPATH}/bin/protoc-gen-go
+${PROTOC}:
+	go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.28
+	go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@v1.2
 
 ABIGEN ?= ${GOPATH}/bin/abigen
 ${ABIGEN}: ${PROTOC_BREW}
