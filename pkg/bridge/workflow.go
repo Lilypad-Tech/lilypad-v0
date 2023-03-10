@@ -174,7 +174,20 @@ func (workflow *Workflow) ProcessEvent(ctx context.Context, event Event) (result
 			result = event.Failed(event.Error())
 		}
 	case OrderStateFailed:
-		result, err = workflow.Contract.Refund(ctx, event.(ContractFailedEvent))
+		// if we have failed we need to deal with the error that happens here
+		// differently than the normal "err" assignment that the other cases use
+		// if we were to assign an error to "err" then it would send it around
+		// an infinite "OrderStateFailed" loop
+		// so - we have already failed - let's just log that and move on
+		// TODO: we should absolutely do something if we have failed to refund the
+		// user - but we don't have time to do that thing right now so let's at least
+		// only log this error once and not loop infinitely
+		innerResult, refundError := workflow.Contract.Refund(ctx, event.(ContractFailedEvent))
+		log.Ctx(ctx).WithLevel(level(refundError)).
+			Err(refundError).
+			Msg("Refunding failed job")
+		result = innerResult
+
 	default:
 		result = nil
 	}
