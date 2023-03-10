@@ -29,6 +29,10 @@ See the examples folder for how to use this in your own contracts!
 
 Get help: [FilecoinProject Slack](https://filecoinproject.slack.com/) #bacalhau or #bacalhau-lilypad channel 
 
+### How Stuff Works
+![image (15)](https://user-images.githubusercontent.com/12529822/224299570-366bde1c-1f48-4af9-9d7c-0d4f8a0fc1fc.png)
+
+
 ### How do I get started on using Lilypad in my project?🧑‍💻
 
 1.  Create a contract that implements [`LilypadCallerInterface`](./hardhat/contracts/LilypadCallerInterface.sol). As part of this interface you need to implement 2 functions:
