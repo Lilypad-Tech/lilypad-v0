@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/bacalhau-project/lilypad/hardhat/artifacts/contracts/LilypadEvents.sol"
+	"github.com/davecgh/go-spew/spew"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -207,6 +208,9 @@ func NewContract(contractAddr common.Address, privateKey *ecdsa.PrivateKey) (Sma
 	if err != nil {
 		return nil, err
 	}
+
+	fmt.Printf("contractAddr --------------------------------------\n")
+	spew.Dump(contractAddr)
 
 	contract, err := LilypadEvents.NewLilypadEvents(contractAddr, client)
 	if err != nil {

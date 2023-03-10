@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"strings"
 
 	"github.com/bacalhau-project/lilypad/pkg/bridge"
 	"github.com/ethereum/go-ethereum/common"
@@ -37,7 +38,7 @@ func main() {
 	}
 
 	addr := common.HexToAddress(os.Getenv("DEPLOYED_CONTRACT_ADDRESS"))
-	privKey, err := crypto.HexToECDSA(os.Getenv("WALLET_PRIVATE_KEY"))
+	privKey, err := crypto.HexToECDSA(strings.Replace(os.Getenv("WALLET_PRIVATE_KEY"), "0x", "", 1))
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "WALLET_PRIVATE_KEY: "+err.Error())
 		return

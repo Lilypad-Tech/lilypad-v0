@@ -69,18 +69,18 @@ func (workflow *Workflow) Start(ctx context.Context) error {
 	defer close(newEvents)
 
 	wg.Go(func() error { return workflow.Run(ctx, newEvents) })
-	wg.Go(func() error { return workflow.Contract.Listen(ctx, submittedEvents) })
-	wg.Go(func() error { return workflow.deduplicateSubmittedEvents(ctx, submittedEvents, newEvents) })
-	wg.Go(func() error {
-		workflow.scheduler.StartAsync()
-		<-ctx.Done()
-		workflow.scheduler.Stop()
-		workflow.scheduler.Clear()
-		return nil
-	})
+	//wg.Go(func() error { return workflow.Contract.Listen(ctx, submittedEvents) })
+	//wg.Go(func() error { return workflow.deduplicateSubmittedEvents(ctx, submittedEvents, newEvents) })
+	// wg.Go(func() error {
+	// 	workflow.scheduler.StartAsync()
+	// 	<-ctx.Done()
+	// 	workflow.scheduler.Stop()
+	// 	workflow.scheduler.Clear()
+	// 	return nil
+	// })
 
 	_, err := workflow.scheduler.Every(workflow.jobCheckInterval).Do(func() {
-		workflow.checkRunningEvents(ctx, newEvents)
+		//workflow.checkRunningEvents(ctx, newEvents)
 	})
 	if err != nil {
 		return err
@@ -160,6 +160,7 @@ func (workflow *Workflow) ProcessEvent(ctx context.Context, event Event) (result
 	log.Ctx(ctx).Trace().Msg("Process event")
 
 	currentState := event.OrderState()
+
 	switch currentState {
 	case OrderStateSubmitted:
 		result, err = workflow.Bacalhau.Create(ctx, event.(ContractSubmittedEvent))
