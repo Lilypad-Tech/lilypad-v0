@@ -157,6 +157,10 @@ func getResult(
 				output := execution.RunOutput
 				storage := &execution.PublishedResult
 
+				if storage.CID == "" {
+					continue
+				}
+
 				var err error
 				result, err = cid.Parse(storage.CID)
 				if err != nil {

@@ -42,6 +42,10 @@ var fastSpec = model.Spec{
 	},
 }
 
+func getWaterlilyImage(artistid string) string {
+	return fmt.Sprintf("algoveraai/sdprojectv2:%s", artistid)
+}
+
 func getWaterlilyEntrypoint(prompt string) []string {
 	escapedPrompt := strings.ReplaceAll(prompt, "\"", "\\\"")
 	fullCommand := fmt.Sprintf(`
@@ -60,15 +64,19 @@ func getWaterlilyEnv(imageid string) []string {
 	}
 }
 
+func getWaterlilyDockerSpec(prompt string, artistid string, imageid string) model.JobSpecDocker {
+	return model.JobSpecDocker{
+		Image:                getWaterlilyImage(artistid),
+		Entrypoint:           getWaterlilyEntrypoint(prompt),
+		EnvironmentVariables: getWaterlilyEnv(imageid),
+	}
+}
+
 var waterlilySpec = model.Spec{
 	Engine:    model.EngineDocker,
 	Verifier:  model.VerifierNoop,
 	Publisher: model.PublisherIpfs,
-	Docker: model.JobSpecDocker{
-		Image:                "algoveraai/sdprojectv2:mckhallstyle",
-		Entrypoint:           getWaterlilyEntrypoint(""),
-		EnvironmentVariables: getWaterlilyEnv(""),
-	},
+	Docker:    getWaterlilyDockerSpec("", "", ""),
 	Resources: model.ResourceUsageConfig{
 		GPU: "1",
 	},

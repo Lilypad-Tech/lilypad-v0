@@ -34,8 +34,11 @@ func getWaterlilySpec(args map[string]string) (model.Spec, error) {
 	ensureArgs(args, "prompt", "artistid", "imageid")
 	spec := waterlilySpec
 	combinedPrompt := fmt.Sprintf("%s, in the style of %s", args["prompt"], args["artistid"])
-	spec.Docker.Entrypoint = getWaterlilyEntrypoint(combinedPrompt)
-	spec.Docker.EnvironmentVariables = getWaterlilyEnv(args["imageid"])
+	spec.Docker = getWaterlilyDockerSpec(
+		combinedPrompt,
+		args["artistid"],
+		args["imageid"],
+	)
 	return spec, nil
 }
 
