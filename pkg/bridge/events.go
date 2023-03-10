@@ -1,7 +1,6 @@
 package bridge
 
 import (
-	"encoding/json"
 	"time"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -239,9 +238,10 @@ func (e *event) Refunded() ContractRefundedEvent {
 }
 
 // The Bacalhau job spec that the contract is asking us to run.
+// We first unmarshall into a interface to check what type we have
+// if it's a template then we trigger the template function
 func (e *event) Spec() (spec model.Spec, err error) {
-	err = json.Unmarshal(e.jobSpec, &spec)
-	return
+	return convertContractJobSpec(e.jobSpec)
 }
 
 // Records that a running Bacalhau job has completed.
