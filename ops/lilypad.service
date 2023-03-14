@@ -5,6 +5,7 @@ Wants=network-online.target systemd-networkd-wait-online.service
 
 [Service]
 Environment="LOG_TYPE=json"
+Environment="LOG_LEVEL=debug"
 Environment="HOME=/tmp"
 EnvironmentFile=/root/lilypad.env
 Restart=always

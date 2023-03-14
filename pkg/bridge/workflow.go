@@ -163,17 +163,24 @@ func (workflow *Workflow) ProcessEvent(ctx context.Context, event Event) (result
 
 	switch currentState {
 	case OrderStateSubmitted:
+		log.Ctx(ctx).Debug().Msgf("ContractSubmittedEvent: %+v", event)
 		result, err = workflow.Bacalhau.Create(ctx, event.(ContractSubmittedEvent))
+		log.Ctx(ctx).Debug().Msgf("result, error: %+v %s", result, err)
 	case OrderStateCompleted:
+		log.Ctx(ctx).Debug().Msgf("OrderStateCompleted: %+v", event)
 		result, err = workflow.Contract.Complete(ctx, event.(BacalhauJobCompletedEvent))
+		log.Ctx(ctx).Debug().Msgf("result, error: %+v %s", result, err)
 	case OrderStateJobError:
+		log.Ctx(ctx).Debug().Msgf("OrderStateJobError: %+v", event)
 		event := event.(BacalhauJobFailedEvent)
 		if ShouldRetry(event) {
 			result = event.Retry()
 		} else {
 			result = event.Failed(event.Error())
 		}
+		log.Ctx(ctx).Debug().Msgf("result: %+v", result)
 	case OrderStateFailed:
+		log.Ctx(ctx).Debug().Msgf("OrderStateFailed: %+v", event)
 		// if we have failed we need to deal with the error that happens here
 		// differently than the normal "err" assignment that the other cases use
 		// if we were to assign an error to "err" then it would send it around
@@ -183,6 +190,7 @@ func (workflow *Workflow) ProcessEvent(ctx context.Context, event Event) (result
 		// user - but we don't have time to do that thing right now so let's at least
 		// only log this error once and not loop infinitely
 		innerResult, refundError := workflow.Contract.Refund(ctx, event.(ContractFailedEvent))
+		log.Ctx(ctx).Debug().Msgf("result, error: %+v %s", innerResult, refundError)
 		log.Ctx(ctx).WithLevel(level(refundError)).
 			Err(refundError).
 			Msg("Refunding failed job")
@@ -195,15 +203,17 @@ func (workflow *Workflow) ProcessEvent(ctx context.Context, event Event) (result
 	if err != nil && !errors.Is(err, context.Canceled) {
 		log.Ctx(ctx).Error().Err(err).Msg("Error processing event")
 
+		result = event.(ContractSubmittedEvent).Failed(err.Error())
+
 		// The processing action failed. If we can retry the action, do that,
 		// else if we are beyond our limit send the order for a refund.
-		if e, retryable := event.(Retryable); retryable && ShouldRetry(e) {
-			e.AddAttempt()
-			result = e
-			wait = workflow.getRetryTime(e)
-		} else {
-			result = event.(ContractSubmittedEvent).Failed(err.Error())
-		}
+		// if e, retryable := event.(Retryable); retryable && ShouldRetry(e) {
+		// 	e.AddAttempt()
+		// 	result = e
+		// 	wait = workflow.getRetryTime(e)
+		// } else {
+		// 	result = event.(ContractSubmittedEvent).Failed(err.Error())
+		// }
 	}
 
 	// If we have a non-nil result, we are changing the state of something. So

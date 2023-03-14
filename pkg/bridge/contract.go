@@ -114,7 +114,7 @@ func (r *realContract) Refund(ctx context.Context, event ContractFailedEvent) (C
 		return nil, err
 	}
 
-	log.Ctx(ctx).Info().Stringer("txn", txn.Hash()).Msg("Error returned")
+	log.Ctx(ctx).Info().Stringer("txn", txn.Hash()).Msgf("Error returned: %s", event.Error())
 	return event.Refunded(), nil
 }
 
