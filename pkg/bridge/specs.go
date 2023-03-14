@@ -46,14 +46,15 @@ func getWaterlilyImage(artistid string) string {
 	return fmt.Sprintf("algoveraai/sdprojectv2:%s", artistid)
 }
 
-func getWaterlilyEntrypoint(prompt string) []string {
+func getWaterlilyEntrypoint(prompt string, imageid string) []string {
 	escapedPrompt := strings.ReplaceAll(prompt, "\"", "\\\"")
 	fullCommand := fmt.Sprintf(`
 	apt install -y curl;
 	curl -o /upload.py https://raw.githubusercontent.com/bacalhau-project/WaterLily/main/scripts/upload.py;
+	echo IMAGE_ID=%s;
 	python main.py --o /outputs --p "%s";
 	python3 /upload.py /outputs
-	`, escapedPrompt)
+	`, imageid, escapedPrompt)
 	singleLineCommand := strings.ReplaceAll(fullCommand, "\n", " ")
 	return []string{"bash", "-c", singleLineCommand}
 }
@@ -67,7 +68,7 @@ func getWaterlilyEnv(imageid string) []string {
 func getWaterlilyDockerSpec(prompt string, artistid string, imageid string) model.JobSpecDocker {
 	return model.JobSpecDocker{
 		Image:                getWaterlilyImage(artistid),
-		Entrypoint:           getWaterlilyEntrypoint(prompt),
+		Entrypoint:           getWaterlilyEntrypoint(prompt, imageid),
 		EnvironmentVariables: getWaterlilyEnv(imageid),
 	}
 }
