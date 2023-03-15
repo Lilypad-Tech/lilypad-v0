@@ -52,9 +52,9 @@ func getWaterlilyEntrypoint(prompt string, imageid string) []string {
 	apt install -y curl;
 	curl -o /upload.py https://raw.githubusercontent.com/bacalhau-project/WaterLily/main/scripts/upload.py;
 	echo IMAGE_ID=%s;
-	python main.py --o /outputs --p "%s";
+	python main.py --o /outputs --seed '%s' --p "%s";
 	python3 /upload.py /outputs
-	`, imageid, escapedPrompt)
+	`, imageid, imageid, escapedPrompt)
 	singleLineCommand := strings.ReplaceAll(fullCommand, "\n", " ")
 	return []string{"bash", "-c", singleLineCommand}
 }
