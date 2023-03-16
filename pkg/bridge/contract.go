@@ -5,6 +5,8 @@ import (
 	"crypto/ecdsa"
 	"fmt"
 	"math/big"
+	"os"
+	"strconv"
 	"time"
 
 	"github.com/bacalhau-project/lilypad/hardhat/artifacts/contracts/LilypadEvents.sol"
@@ -50,7 +52,17 @@ func (r *realContract) prepareTransaction(ctx context.Context) (*bind.TransactOp
 		return nil, err
 	}
 
-	opts, err := bind.NewKeyedTransactorWithChainID(r.privateKey, big.NewInt(3141))
+	chainIdStr, found := os.LookupEnv("CHAIN_ID")
+	if !found {
+		return nil, fmt.Errorf("CHAIN_ID env var must be set")
+	}
+
+	chainId, err := strconv.ParseInt(chainIdStr, 10, 32)
+	if err != nil {
+		return nil, err
+	}
+
+	opts, err := bind.NewKeyedTransactorWithChainID(r.privateKey, big.NewInt(chainId))
 	if err != nil {
 		return nil, err
 	}
@@ -194,8 +206,10 @@ func (r *realContract) ReadLogs(ctx context.Context, out chan<- ContractSubmitte
 }
 
 func NewContract(contractAddr common.Address, privateKey *ecdsa.PrivateKey) (SmartContract, error) {
-	rpcEndpoint := "wss://ws-filecoin-hyperspace.chainstacklabs.com/rpc/v1"
-	// rpcEndpoint := "wss://wss.hyperspace.node.glif.io/apigw/lotus/rpc/v1"
+	rpcEndpoint, found := os.LookupEnv("RPC_ENDPOINT")
+	if !found {
+		return nil, fmt.Errorf("RPC_ENDPOINT env var must be specified")
+	}
 
 	log.Debug().Str("endpoint", rpcEndpoint).Msg("Dial")
 	client, err := ethclient.Dial(rpcEndpoint)
