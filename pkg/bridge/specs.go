@@ -2,6 +2,7 @@ package bridge
 
 import (
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/filecoin-project/bacalhau/pkg/model"
@@ -60,8 +61,9 @@ func getWaterlilyEntrypoint(prompt string, imageid string) []string {
 }
 
 func getWaterlilyEnv(imageid string) []string {
+	chain := os.Getenv("CHAIN_ID") // hack!
 	return []string{
-		fmt.Sprintf("WATERLILY_JOB_ID=%s", imageid),
+		fmt.Sprintf("WATERLILY_JOB_ID=%s-%s", chain, imageid),
 	}
 }
 
