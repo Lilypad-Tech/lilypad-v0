@@ -31,7 +31,13 @@ func main() {
 	ctx, cancel := signal.NotifyContext(ctx, os.Interrupt)
 	defer cancel()
 
-	repo, err := bridge.NewSQLiteRepository(ctx, "lilypad.sqlite")
+	sqliteFileLocation := os.Getenv("SQLITE_FILE_LOCATION")
+
+	if sqliteFileLocation == "" {
+		sqliteFileLocation = "lilypad.sqlite"
+	}
+
+	repo, err := bridge.NewSQLiteRepository(ctx, sqliteFileLocation)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err.Error())
 		return
