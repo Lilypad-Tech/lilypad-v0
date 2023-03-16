@@ -52,10 +52,9 @@ func getWaterlilyEntrypoint(prompt string, imageid string) []string {
 	fullCommand := fmt.Sprintf(`
 	apt install -y curl;
 	curl -o /upload.py https://raw.githubusercontent.com/bacalhau-project/WaterLily/main/scripts/upload.py;
-	echo IMAGE_ID=%s;
 	python main.py --o /outputs --seed '%s' --p "%s";
 	python3 /upload.py /outputs
-	`, imageid, imageid, escapedPrompt)
+	`, imageid, escapedPrompt)
 	singleLineCommand := strings.ReplaceAll(fullCommand, "\n", " ")
 	return []string{"bash", "-c", singleLineCommand}
 }
@@ -64,6 +63,7 @@ func getWaterlilyEnv(imageid string) []string {
 	chain := os.Getenv("CHAIN_ID") // hack!
 	return []string{
 		fmt.Sprintf("WATERLILY_JOB_ID=%s-%s", chain, imageid),
+		fmt.Sprintf("FILESTORE_ACCESS_TOKEN=%s", os.Getenv("FILESTORE_TOKEN")),
 	}
 }
 
