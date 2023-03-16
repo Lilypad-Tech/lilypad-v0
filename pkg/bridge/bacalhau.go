@@ -139,7 +139,7 @@ func (runner *bacalhauRunner) FindCompleted(ctx context.Context, jobs []Bacalhau
 		// paying them...
 		if !found {
 			log.Ctx(ctx).Error().Msg("Bacalhau job not found")
-			failed = append(failed, j.JobError("Bacalhau job not found"))
+			// failed = append(failed, j.JobError("Bacalhau job not found"))
 		}
 	}
 
