@@ -1,4 +1,4 @@
-# 🌺🐸 lilypad
+# 🌺🐸 Lilypad
 A simple and lightweight FVM "oracle" using Bacalhau. We're enabling calling Bacalhau jobs from smart contracts! 
 
 This project harnesses the power of onchain compute with off-chain computations including tradional Oracle jobs, AI, ML and well any Docker or WASM job you can run on Bacalhau.
