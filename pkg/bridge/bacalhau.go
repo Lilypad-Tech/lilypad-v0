@@ -5,14 +5,13 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/filecoin-project/bacalhau/pkg/job"
-	"github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/filecoin-project/bacalhau/pkg/requester/publicapi"
-	"github.com/filecoin-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/job"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/requester/publicapi"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/ipfs/go-cid"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
-	"golang.org/x/exp/maps"
 )
 
 const LilypadJobAnnotation string = "lilypad-job"
@@ -105,7 +104,7 @@ func (runner *bacalhauRunner) FindCompleted(ctx context.Context, jobs []Bacalhau
 			if ok, err := jobStillRunning(bacjob.State); !ok || err != nil {
 				log.Ctx(ctx).Debug().Err(err).Msg("Bacalhau job still in progress")
 			} else if ok, err := jobComplete(bacjob.State); ok && err == nil {
-				found, cid, stdout, stderr, exitcode := getResult(ctx, bacjob.State.Shards, model.ShardStateCompleted)
+				found, cid, stdout, stderr, exitcode := getResult(ctx, bacjob.State, model.JobStateCompleted)
 				if found {
 					log.Ctx(ctx).Info().Err(err).Msg("Bacalhau job completed")
 					completed = append(completed, j.Completed(cid, stdout, stderr, exitcode))
@@ -114,7 +113,7 @@ func (runner *bacalhauRunner) FindCompleted(ctx context.Context, jobs []Bacalhau
 					failed = append(failed, j.JobError("No results found for completed job"))
 				}
 			} else if ok, err := jobHasErrors(bacjob.State); !ok || err != nil {
-				found, _, _, stderr, _ := getResult(ctx, bacjob.State.Shards, model.ShardStateCompleted)
+				found, _, _, stderr, _ := getResult(ctx, bacjob.State, model.JobStateCompleted)
 				if !found {
 					stderr = "Bacalhau job failed"
 				}
@@ -147,30 +146,28 @@ func (runner *bacalhauRunner) FindCompleted(ctx context.Context, jobs []Bacalhau
 
 func getResult(
 	ctx context.Context,
-	shards map[int]model.ShardState,
-	state model.ShardStateType,
+	shard model.JobState,
+	state model.JobStateType,
 ) (found bool, result cid.Cid, stdout, stderr string, exitcode int) {
-	for _, shard := range maps.Values(shards) {
-		for _, execution := range shard.Executions {
-			if shard.State == state {
-				output := execution.RunOutput
-				storage := &execution.PublishedResult
+	for _, execution := range shard.Executions {
+		if shard.State == state {
+			output := execution.RunOutput
+			storage := &execution.PublishedResult
 
-				var err error
-				result, err = cid.Parse(storage.CID)
-				if err != nil {
-					log.Ctx(ctx).Error().Str("cid", storage.CID).Err(err).Msg("Unable to parse result CID")
-					continue
-				}
-
-				if output != nil {
-					stdout = output.STDOUT
-					stderr = output.STDERR
-					exitcode = output.ExitCode
-				}
-
-				return true, result, stdout, stderr, exitcode
+			var err error
+			result, err = cid.Parse(storage.CID)
+			if err != nil {
+				log.Ctx(ctx).Warn().Str("cid", storage.CID).Err(err).Msg("Unable to parse result CID")
+				continue
 			}
+
+			if output != nil {
+				stdout = output.STDOUT
+				stderr = output.STDERR
+				exitcode = output.ExitCode
+			}
+
+			return true, result, stdout, stderr, exitcode
 		}
 	}
 
@@ -181,8 +178,8 @@ var _ JobRunner = (*bacalhauRunner)(nil)
 
 // Returns a real job runner that will make real requests against the Bacalhau network.
 func NewJobRunner() JobRunner {
-	apiPort := 1234
+	apiPort := uint16(1234)
 	apiHost := "35.245.115.191"
-	client := publicapi.NewRequesterAPIClient(fmt.Sprintf("http://%s:%d", apiHost, apiPort))
+	client := publicapi.NewRequesterAPIClient(apiHost, apiPort)
 	return &bacalhauRunner{Client: client}
 }
