@@ -3,9 +3,9 @@ package bridge
 import (
 	"context"
 	"fmt"
+	"os"
 	"time"
 
-	"github.com/bacalhau-project/bacalhau/pkg/job"
 	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/bacalhau-project/bacalhau/pkg/requester/publicapi"
 	"github.com/bacalhau-project/bacalhau/pkg/system"
@@ -81,7 +81,7 @@ func (runner *bacalhauRunner) FindCompleted(ctx context.Context, jobs []Bacalhau
 	defer cancel()
 
 	// TODO: don't limit to 100 jobs...
-	bacjobs, err := runner.Client.List(timeoutCtx, "", []model.IncludedTag{model.IncludedTag(LilypadJobAnnotation)}, nil, 100, false, "created_at", true)
+	bacjobs, err := runner.Client.List(timeoutCtx, "", []model.IncludedTag{model.IncludedTag(LilypadJobAnnotation)}, nil, 100, true, "created_at", true)
 	if err != nil {
 		log.Ctx(ctx).Error().Err(err).Send()
 		return completed, failed
@@ -92,18 +92,15 @@ func (runner *bacalhauRunner) FindCompleted(ctx context.Context, jobs []Bacalhau
 		found := false
 
 		for _, bacjob := range bacjobs {
-			if bacjob.Job.Metadata.ID != j.JobID() {
+			found = bacjob.Job.Metadata.ID != j.JobID()
+			if !found {
 				continue
 			}
 
-			found = true
-			jobStillRunning := job.WaitForTerminalStates()
-			jobHasErrors := job.WaitExecutionsThrowErrors([]model.ExecutionStateType{model.ExecutionStateFailed})
-			jobComplete := job.WaitForSuccessfulCompletion()
-
-			if ok, err := jobStillRunning(bacjob.State); !ok || err != nil {
+			switch bacjob.State.State {
+			case model.JobStateInProgress, model.JobStateQueued, model.JobStateNew:
 				log.Ctx(ctx).Debug().Err(err).Msg("Bacalhau job still in progress")
-			} else if ok, err := jobComplete(bacjob.State); ok && err == nil {
+			case model.JobStateCompleted:
 				found, cid, stdout, stderr, exitcode := getResult(ctx, bacjob.State, model.JobStateCompleted)
 				if found {
 					log.Ctx(ctx).Info().Err(err).Msg("Bacalhau job completed")
@@ -112,7 +109,7 @@ func (runner *bacalhauRunner) FindCompleted(ctx context.Context, jobs []Bacalhau
 					log.Ctx(ctx).Error().Msg("No reuslts found for completed job")
 					failed = append(failed, j.JobError("No results found for completed job"))
 				}
-			} else if ok, err := jobHasErrors(bacjob.State); !ok || err != nil {
+			case model.JobStateError, model.JobStateCancelled:
 				found, _, _, stderr, _ := getResult(ctx, bacjob.State, model.JobStateCompleted)
 				if !found {
 					stderr = "Bacalhau job failed"
@@ -120,10 +117,10 @@ func (runner *bacalhauRunner) FindCompleted(ctx context.Context, jobs []Bacalhau
 
 				log.Ctx(ctx).Info().Err(err).Msg("Bacalhau job failed")
 				failed = append(failed, j.JobError(stderr))
-			} else {
+			default:
 				// This would be a programming error – we haven't taken account
 				// of the states properly.
-				log.Ctx(ctx).Warn().Msg("Bacalhau job in unknown state")
+				log.Ctx(ctx).Warn().Stringer("JobState", bacjob.State.State).Msg("Bacalhau job in unhandled state")
 			}
 
 			break
@@ -182,7 +179,10 @@ var _ JobRunner = (*bacalhauRunner)(nil)
 // Returns a real job runner that will make real requests against the Bacalhau network.
 func NewJobRunner() JobRunner {
 	apiPort := uint16(1234)
-	apiHost := "35.245.115.191"
+	apiHost, set := os.LookupEnv("BACALHAU_API_HOST")
+	if !set {
+		apiHost = "35.245.115.191"
+	}
 	client := publicapi.NewRequesterAPIClient(apiHost, apiPort)
 	return &bacalhauRunner{Client: client}
 }
