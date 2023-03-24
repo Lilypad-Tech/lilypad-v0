@@ -1,4 +1,4 @@
-# 🌺🐸 lilypad
+# 🌺🐸 Lilypad
 A simple and lightweight FVM "oracle" using Bacalhau. We're enabling calling Bacalhau jobs from smart contracts! 
 
 This project harnesses the power of onchain compute with off-chain computations including tradional Oracle jobs, AI, ML and well any Docker or WASM job you can run on Bacalhau.
@@ -76,6 +76,15 @@ Try out
 See a video of this project in action [here](https://youtu.be/B0l0gFYxADY)
 
 Read more and see the presentation slides [here](https://bit.ly/project-lilypad)
+
+### See our Example Project
+
+We've created Waterlily - an AI-Art generator that pays royalties to artists (or donations to art foundations for public works).
+
+See it live in action [waterlily.ai](https://www.waterlily.ai/)
+
+![Screenshot 2023-03-14 at 10 14 23 am](https://user-images.githubusercontent.com/12529822/224852799-594fd941-be82-4b7e-b7cd-2ba306857243.png)
+ 
 
 ### Get in touch
 

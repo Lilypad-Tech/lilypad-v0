@@ -4,12 +4,10 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/filecoin-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
 )
 
 type specTemplateFunction func(map[string]string) (model.Spec, error)
-
-const templatesKey = "templates"
 
 func ensureArgs(args map[string]string, keys ...string) error {
 	for _, k := range keys {
@@ -20,18 +18,16 @@ func ensureArgs(args map[string]string, keys ...string) error {
 	return nil
 }
 
-func getStableDiffusionSpec(args map[string]string) (model.Spec, error) {
-	spec := stableDiffusionSpec
-	return spec, nil
-}
-
 func getFastSpec(args map[string]string) (model.Spec, error) {
 	spec := fastSpec
 	return spec, nil
 }
 
 func getWaterlilySpec(args map[string]string) (model.Spec, error) {
-	ensureArgs(args, "prompt", "artistid", "imageid")
+	if err := ensureArgs(args, "prompt", "artistid", "imageid"); err != nil {
+		return model.Spec{}, err
+	}
+
 	spec := waterlilySpec
 	combinedPrompt := fmt.Sprintf("%s, in the style of %s", args["prompt"], args["artistid"])
 	spec.Docker = getWaterlilyDockerSpec(
@@ -43,9 +39,8 @@ func getWaterlilySpec(args map[string]string) (model.Spec, error) {
 }
 
 var templateFunctions map[string]specTemplateFunction = map[string]specTemplateFunction{
-	"stablediffusion": getStableDiffusionSpec,
-	"fast":            getFastSpec,
-	"waterlily":       getWaterlilySpec,
+	"fast":      getFastSpec,
+	"waterlily": getWaterlilySpec,
 }
 
 // first let's just convert the data to a map[string]string

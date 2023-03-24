@@ -3,8 +3,8 @@ package bridge
 import (
 	"time"
 
+	"github.com/bacalhau-project/bacalhau/pkg/model"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/filecoin-project/bacalhau/pkg/model"
 	"github.com/ipfs/go-cid"
 )
 

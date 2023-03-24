@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/filecoin-project/bacalhau/pkg/model"
-	"github.com/filecoin-project/bacalhau/pkg/system"
+	"github.com/bacalhau-project/bacalhau/pkg/model"
+	"github.com/bacalhau-project/bacalhau/pkg/system"
 	"github.com/ipfs/go-cid"
 	"github.com/stretchr/testify/suite"
 	"golang.org/x/sync/errgroup"
@@ -32,7 +32,7 @@ func TestWorkflowSuite(t *testing.T) {
 }
 
 func (suite *WorkflowTestSuite) SetupSuite() {
-	suite.NoError(system.InitConfigForTesting(suite.T()))
+	system.InitConfigForTesting(suite.T())
 	defaultRetryStrategy = Immediate
 	defaultJobCheckInterval = 20 * time.Millisecond
 }

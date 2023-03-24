@@ -7,6 +7,7 @@ import (
 	"os/signal"
 	"strings"
 
+	"github.com/bacalhau-project/bacalhau/pkg/logger"
 	"github.com/bacalhau-project/lilypad/pkg/bridge"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -15,6 +16,7 @@ import (
 )
 
 func main() {
+	logger.ConfigureLogging(logger.LogModeDefault)
 	ctx := log.Logger.WithContext(context.Background())
 
 	lvl := zerolog.InfoLevel
