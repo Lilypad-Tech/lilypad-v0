@@ -50,10 +50,11 @@ func getWaterlilyImage(artistid string) string {
 func getWaterlilyEntrypoint(prompt string, imageid string) []string {
 	escapedPrompt := strings.ReplaceAll(prompt, "\"", "\\\"")
 	fullCommand := fmt.Sprintf(`
-	apt install -y curl;
-	curl -o /upload.py https://raw.githubusercontent.com/bacalhau-project/WaterLily/main/scripts/upload.py;
-	python main.py --o /outputs --seed '%s' --p "%s";
-	python3 /upload.py /outputs
+	(apt update && apt install -y curl) &
+	(python main.py --o /outputs --seed '%s' --p "%s") &
+	wait &&
+		curl -o /upload.py https://raw.githubusercontent.com/bacalhau-project/WaterLily/main/scripts/upload.py &&
+		python3 /upload.py /outputs;
 	`, imageid, escapedPrompt)
 	singleLineCommand := strings.ReplaceAll(fullCommand, "\n", " ")
 	return []string{"bash", "-c", singleLineCommand}
