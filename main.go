@@ -16,11 +16,6 @@ func main() {
 	// bacalhaus sets the default logger using buffered writer, so here just create a new one to ensure logs printed.
 	defaultLog := zerolog.New(os.Stderr).With().Timestamp().Logger()
 	ctx := defaultLog.WithContext(context.Background())
-	//defer func() {
-	//	// bacalhau sets the default logger using buffered writer, so we need to flush it before exiting.
-	//	// Make sure any buffered logs are written if something failed before logging was configured.
-	//	logger.LogBufferedLogs(nil)
-	//}()
 
 	lvl := zerolog.InfoLevel
 	if level, found := os.LookupEnv("LOG_LEVEL"); found {
