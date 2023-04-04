@@ -77,8 +77,8 @@ ENV_FILE ?= hardhat/.env
 ifeq ($(shell cat ${ENV_FILE} | grep WALLET_PRIVATE_KEY),)
 $(warning No WALLET_PRIVATE_KEY in ${ENV_FILE})
 endif
-ifeq ($(shell cat ${ENV_FILE} | grep CONTRACT_ADDRESS),)
-$(warning No CONTRACT_ADDRESS in ${ENV_FILE})
+ifeq ($(shell cat ${ENV_FILE} | grep DEPLOYED_CONTRACT_ADDRESS),)
+$(warning No DEPLOYED_CONTRACT_ADDRESS in ${ENV_FILE})
 endif
 
 .PHONY: deploy
