@@ -135,7 +135,7 @@ contract LilypadEventsUpgradeable is Initializable, AccessControlUpgradeable, UU
     }
 
     /** Lilypad Job via Bacalhau network functions **/
-    function runLilypadJob(address _from, string memory _spec, LilypadResultType _resultType) public payable returns (uint) {
+    function runLilypadJob(address _from, string memory _spec, uint8(LilypadResultType) _resultType) public payable returns (uint) {
         //check spec exists
         require(bytes(lilypadSpecs[_spec].name).length > 0, "The spec name doesn't exist - see the doc's for available spec's");
         //check payment enough to cover spec. cost
@@ -170,7 +170,7 @@ contract LilypadEventsUpgradeable is Initializable, AccessControlUpgradeable, UU
     }
 
     /** Run your own docker image spec on the network with the _specName = "CustomSpec", You need to pass in the Bacalhau specification for this **/
-    function runLilypadJob(address _from, string memory _specName, string memory _spec, LilypadResultType _resultType) public payable returns (uint) {
+    function runLilypadJob(address _from, string memory _specName, string memory _spec, uint8(LilypadResultType) _resultType) public payable returns (uint) {
         //check spec exists
         require(bytes(lilypadSpecs[_spec].name).length > 0, "The spec name doesn't exist - see the doc's for available spec's");
         //check payment enough to cover spec. cost
@@ -203,7 +203,6 @@ contract LilypadEventsUpgradeable is Initializable, AccessControlUpgradeable, UU
 
         return thisJobId;
     }
-
 
     // this should really be owner only - our admin contract should be the only one able to call it
     function returnLilypadResults(address _to, uint _jobId, LilypadResultType _resultType, string memory _result) public {
