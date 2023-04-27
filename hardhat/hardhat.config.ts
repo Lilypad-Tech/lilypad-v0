@@ -22,6 +22,16 @@ const config: HardhatUserConfig = {
       chainId: 3141,
       accounts: [walletPrivateKey],
     },
+    filecoinCalibrationNet: {
+      url: 'https://api.calibration.node.glif.io/rpc/v0',
+      chainId: 314159,
+      accounts: [walletPrivateKey],
+    },
+    filecoinMainnet: {
+      url: 'https://api.node.glif.io', //'https://rpc.ankr.com/filecoin_testnet', //https://filecoin-hyperspace.chainstacklabs.com/rpc/v1
+      chainId: 314,
+      accounts: [walletPrivateKey],
+    },
   },
 };
 
