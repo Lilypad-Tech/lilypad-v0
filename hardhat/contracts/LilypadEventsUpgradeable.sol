@@ -69,11 +69,11 @@ contract LilypadEventsUpgradeable is Initializable, AccessControlUpgradeable, UU
     event LilypadEscrowPaid(address, uint256);
 
     /** Escrow/ Balance functions **/
-    function getEscrowAddress()public onlyRole(UPGRADER_ROLE) returns(address) {
+    function getEscrowAddress()public view onlyRole(UPGRADER_ROLE) returns(address) {
         return escrowAddress;
     }
 
-    function getEsrowMinAutoPay()public onlyRole(UPGRADER_ROLE) returns(uint256) {
+    function getEsrowMinAutoPay()public view onlyRole(UPGRADER_ROLE) returns(uint256) {
         return escrowMinAutoPay;
     }
 
@@ -88,7 +88,7 @@ contract LilypadEventsUpgradeable is Initializable, AccessControlUpgradeable, UU
     function withdrawBalanceToEscrowAddress() public onlyRole(UPGRADER_ROLE){
         address payable recipient = payable(escrowAddress);
         escrowAmount = 0;
-        amount = address(this).balance;
+        uint256 amount = address(this).balance;
         recipient.transfer(amount);
         emit LilypadEscrowPaid(recipient, amount);
     }
@@ -97,7 +97,7 @@ contract LilypadEventsUpgradeable is Initializable, AccessControlUpgradeable, UU
         return LILYPAD_FEE;
     }
 
-    function getContractBalance() public onlyRole(UPGRADER_ROLE) returns (uint256) {
+    function getContractBalance() public view onlyRole(UPGRADER_ROLE) returns (uint256) {
       return address(this).balance;
     }
 
@@ -115,7 +115,7 @@ contract LilypadEventsUpgradeable is Initializable, AccessControlUpgradeable, UU
             requestor: _from,
             id: thisJobId,
             spec: _spec,
-            resultType: _resultType
+            resultType: LilypadResultType(_resultType)
         });
 
         lilypadJobHistory.push(jobCalled);
