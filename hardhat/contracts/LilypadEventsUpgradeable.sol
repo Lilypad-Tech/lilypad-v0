@@ -15,6 +15,7 @@ error LilypadEventsUpgradeableError();
 contract LilypadEventsUpgradeable is Initializable, AccessControlUpgradeable, UUPSUpgradeable {
     bool private initialized;
     bytes32 public constant UPGRADER_ROLE = keccak256("UPGRADER_ROLE");
+    uint256 public LILYPAD_FEE = 0.03 * 10**18;
     uint256 private escrowAmount = 0;
     uint256 private escrowMinAutoPay  = 5 * 10**18;
     address private escrowAddress = 0x5617493b265E9d3CC65CE55eAB7798796D9108E4; //unused but leaving for now for memory slot in UUPS
@@ -47,7 +48,7 @@ contract LilypadEventsUpgradeable is Initializable, AccessControlUpgradeable, UU
     struct LilypadJob {
         address requestor;
         uint id; //jobID
-        string spec; // change to type Spec
+        string spec; 
         LilypadResultType resultType;
     }
     LilypadJob[] public lilypadJobHistory; //complete history of all jobs hmm. this is going to get bloated
@@ -62,20 +63,20 @@ contract LilypadEventsUpgradeable is Initializable, AccessControlUpgradeable, UU
     LilypadJobResult[] public lilypadJobResultHistory;
     mapping(address => LilypadJobResult[]) lilypadJobResultByAddress; // jobs by requestor
 
-    struct Spec {
-        string name;
-        string spec;
-        uint256 fee;
-    }
-    Spec[] public availableSpecs; // visibility function
-    mapping(string => Spec) lilypadSpecs;
-
     /** Events **/
     event NewLilypadJobSubmitted(LilypadJob job);
     event LilypadJobResultsReturned(LilypadJobResult result);
     event LilypadEscrowPaid(address, uint256);
 
     /** Escrow/ Balance functions **/
+    function getEscrowAddress()public onlyRole(UPGRADER_ROLE) returns(address) {
+        return escrowAddress;
+    }
+
+    function getEsrowMinAutoPay()public onlyRole(UPGRADER_ROLE) returns(uint256) {
+        return escrowMinAutoPay;
+    }
+
     function setEscrowMinAutoPay(uint256 _minAmount) public onlyRole(UPGRADER_ROLE){
       escrowMinAutoPay = _minAmount;
     }
@@ -84,104 +85,36 @@ contract LilypadEventsUpgradeable is Initializable, AccessControlUpgradeable, UU
       escrowAddress = _escrowAddress;
     }
 
-    function getContractBalance() public view returns (uint256) {
+    function withdrawBalanceToEscrowAddress() public onlyRole(UPGRADER_ROLE){
+        address payable recipient = payable(escrowAddress);
+        escrowAmount = 0;
+        amount = address(this).balance;
+        recipient.transfer(amount);
+        emit LilypadEscrowPaid(recipient, amount);
+    }
+
+    function getLilypadFee() public view returns (uint256) {
+        return LILYPAD_FEE;
+    }
+
+    function getContractBalance() public onlyRole(UPGRADER_ROLE) returns (uint256) {
       return address(this).balance;
     }
 
-    /** Spec functions **/
-    function addSpec(string calldata _specName, string calldata _spec, uint256 _fee) public onlyRole(UPGRADER_ROLE){
-        require(bytes(lilypadSpecs[_specName].name).length == 0, "SpecName already exists");
-        lilypadSpecs[_specName] = Spec({
-            name: _specName,
-            spec: _spec,
-            fee: _fee
-        });
-        availableSpecs.push(lilypadSpecs[_specName]);
-    }
-
-    function updateSpec(string calldata _specName, string calldata _spec, uint256 _fee) public onlyRole(UPGRADER_ROLE){
-        require(bytes(lilypadSpecs[_specName].name).length > 0, "SpecName does not exist");
-        lilypadSpecs[_specName] = Spec({
-            name: _specName,
-            spec: _spec,
-            fee: _fee
-        });
-    }
-
-    function removeSpec(string calldata _specName) public onlyRole(UPGRADER_ROLE) {
-        require(bytes(lilypadSpecs[_specName].name).length > 0, "SpecName does not exist");
-        //find the index of the spec in availableSpecs
-        uint256 specIndex = 0;
-        for (uint256 i = 0; i < availableSpecs.length; i++) {
-            if (keccak256(bytes(availableSpecs[i].name)) == keccak256(bytes(_specName))) {
-                specIndex = i;
-                break;
-            }
-        }
-        availableSpecs[specIndex] = availableSpecs[availableSpecs.length - 1];
-        availableSpecs.pop();
-
-        //Delete Spec from lilypadSpecs
-        delete lilypadSpecs[_specName];
-    }
-
-    function fetchAllSpecs() public view returns (Spec[] memory) {
-      return availableSpecs;
-    }
-
-    function fetchSpecByName(string calldata _specName) public view returns (string memory) {
-        require(bytes(lilypadSpecs[_specName].name).length > 0, "SpecName does not exist");
-        return lilypadSpecs[_specName].spec;
+    function setLilypadFee(uint256 _newFee) public onlyRole(UPGRADER_ROLE) {
+        LILYPAD_FEE=_newFee;
     }
 
     /** Lilypad Job via Bacalhau network functions **/
-    function runLilypadJob(address _from, string memory _spec, uint8 _resultType) public payable returns (uint) {
-        //check spec exists
-        require(bytes(lilypadSpecs[_spec].name).length > 0, "The spec name doesn't exist - see the doc's for available spec's");
-        //check payment enough to cover spec. cost
-        Spec storage thisSpec = lilypadSpecs[_spec];
-        require(msg.value >= thisSpec.fee, "Not enough payment sent to cover job fee");
-
-        uint thisJobId = _jobIds.current();
-        LilypadJob memory jobCalled = LilypadJob({
-            requestor: _from,
-            id: thisJobId,
-            spec: lilypadSpecs[_spec].spec,
-            resultType: _resultType
-        });
-
-        lilypadJobHistory.push(jobCalled);
-        emit NewLilypadJobSubmitted(jobCalled);
-        _jobIds.increment();
-
-        escrowAmount += msg.value; 
-        if(escrowAmount > escrowMinAutoPay){
-            uint256 escrowToSend = escrowAmount;
-            address payable recipient = payable(escrowAddress);
-            //should check contract balance before proceeding
-            if(address(this).balance >= escrowToSend) {
-              escrowAmount = 0;
-              recipient.transfer(escrowToSend);
-              emit LilypadEscrowPaid(recipient, escrowToSend);
-            }
-        }
-
-        return thisJobId;
-    }
-
     /** Run your own docker image spec on the network with the _specName = "CustomSpec", You need to pass in the Bacalhau specification for this **/
-    function runLilypadJob(address _from, string memory _specName, string memory _spec, uint8 _resultType) public payable returns (uint) {
-        //check spec exists
-        require(bytes(lilypadSpecs[_spec].name).length > 0, "The spec name doesn't exist - see the doc's for available spec's");
-        //check payment enough to cover spec. cost
-        Spec storage thisSpec = lilypadSpecs[_spec];
-        require(msg.value >= thisSpec.fee, "Not enough payment sent to cover job fee");
+    function runLilypadJob(address _from, string memory _spec, uint8 _resultType) public payable returns (uint) {
+        require(msg.value >= LILYPAD_FEE, "Not enough payment sent to cover job fee");
 
         uint thisJobId = _jobIds.current();
         LilypadJob memory jobCalled = LilypadJob({
             requestor: _from,
             id: thisJobId,
-            spec: lilypadSpecs[_spec].spec,
+            spec: _spec,
             resultType: _resultType
         });
 
