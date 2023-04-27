@@ -1,10 +1,10 @@
 import { ethers, upgrades } from 'hardhat';
 
-import type { LilypadEvents } from '../typechain-types/LilypadEvents';
-import type { LilypadEvents__factory } from '../typechain-types/factories/LilypadEvents__factory';
+import type { LilypadEventsUpgradeable } from '../typechain-types/contracts/LilypadEventsUpgradeable';
+import type { LilypadEventsUpgradeable__factory } from '../typechain-types/factories/contracts/LilypadEventsUpgradeable__factory';
 
 async function main() {
-  console.log('LilypadEvents deploying....');
+  console.log('LilypadEventsUpgradeable deploying....');
 
   // Multisig wallet required here in future.
   const owner = new ethers.Wallet(
@@ -12,18 +12,21 @@ async function main() {
     ethers.provider
   );
 
-  const lilypadEventsFactory: LilypadEvents__factory = <LilypadEvents__factory>(
-    await ethers.getContractFactory('LilypadEvents', owner)
-  );
+  const lilypadEventsUpgradeableFactory: LilypadEventsUpgradeable__factory = <
+    LilypadEventsUpgradeable__factory
+  >await ethers.getContractFactory('LilypadEventsUpgradeable', owner);
 
-  const lilypadEvents: LilypadEvents = <LilypadEvents>(
-    await upgrades.deployProxy(lilypadEventsFactory, [], {
-      kind: 'uups',
-    })
-  );
+  const lilypadEventsUpgradeable: LilypadEventsUpgradeable = <
+    LilypadEventsUpgradeable
+  >await upgrades.deployProxy(lilypadEventsUpgradeableFactory, [], {
+    kind: 'uups',
+  });
 
-  await lilypadEvents.deployed();
-  console.log('LilypadEvents deployed to ', lilypadEvents.address);
+  await lilypadEventsUpgradeable.deployed();
+  console.log(
+    'LilypadEventsUpgradeable deployed to ',
+    lilypadEventsUpgradeable.address
+  );
 }
 
 main().catch((error) => {
