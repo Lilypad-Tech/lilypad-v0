@@ -3,13 +3,12 @@ Description=Lilypad Daemon
 After=network-online.target
 Wants=network-online.target systemd-networkd-wait-online.service
 
+[Install]
+WantedBy=multi-user.target
+
 [Service]
-Environment="LOG_TYPE=json"
+Environment="LOG_MODE=json"
 Environment="HOME=/tmp"
-EnvironmentFile=/root/lilypad.env
 Restart=always
 RestartSec=5s
 ExecStart=/usr/bin/lilypad
-
-[Install]
-WantedBy=multi-user.target

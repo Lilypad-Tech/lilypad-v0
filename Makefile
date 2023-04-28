@@ -73,6 +73,10 @@ bin/${BASENAME}-%: ${HARDHAT_PACKAGES} $(shell find pkg -name '*.go') main.go | 
 .PHONY: build
 build: ${EXAMPLES_ABIJSONS} ${BINARIES}
 
+NETWORKS ?= mainnet hyperspace calibration
+PROPERTIES = WALLET_PRIVATE_KEY DEPLOYED_CONTRACT_ADDRESS RPC_ENDPOINT CHAIN_ID
+ENV_FILES = $(patsubst %,hardhat/%.env,${NETWORKS})
+
 ENV_FILE ?= hardhat/.env
 ifeq ($(shell cat ${ENV_FILE} | grep WALLET_PRIVATE_KEY),)
 $(warning No WALLET_PRIVATE_KEY in ${ENV_FILE})
@@ -81,9 +85,20 @@ ifeq ($(shell cat ${ENV_FILE} | grep DEPLOYED_CONTRACT_ADDRESS),)
 $(warning No DEPLOYED_CONTRACT_ADDRESS in ${ENV_FILE})
 endif
 
+
 .PHONY: deploy
-deploy: ${BINARIES} | ops/deploy.sh ${ENV_FILE}
-	cd ops && ./deploy.sh
+deploy: ${BINARIES} | ops/deploy.sh ${ENV_FILES}
+	for ENV_FILE in ${ENV_FILES}; do \
+		if ! test -f $$ENV_FILE; then \
+			echo "$$ENV_FILE does not exist"; exit 1; \
+		fi; \
+		for PROPERTY in ${PROPERTIES}; do \
+			if test -z "$$(cat $$ENV_FILE | grep -o $$PROPERTY)"; then \
+				echo "$$ENV_FILE does not contain $$PROPERTY"; exit 1; \
+			fi; \
+		done; \
+	done; \
+	cd ops && ./deploy.sh ${NETWORKS}
 
 .PHONY: run
 run: ${BINARY} | ${ENV_FILE}
