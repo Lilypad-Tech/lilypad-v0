@@ -9,7 +9,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/bacalhau-project/lilypad/hardhat/artifacts/contracts/LilypadEvents.sol"
+	"github.com/bacalhau-project/lilypad/hardhat/artifacts/contracts/LilypadEventsUpgradeable.sol"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -28,7 +28,7 @@ type SmartContract interface {
 
 type realContract struct {
 	client     *ethclient.Client
-	contract   *LilypadEvents.LilypadEvents
+	contract   *LilypadEventsUpgradeable.LilypadEventsUpgradeable
 	privateKey *ecdsa.PrivateKey
 
 	maxSeenBlock uint64
@@ -93,7 +93,7 @@ func (r *realContract) Complete(ctx context.Context, event BacalhauJobCompletedE
 		result = fmt.Sprint(event.ExitCode())
 	}
 
-	txn, err := r.contract.LilypadEventsTransactor.ReturnBacalhauResults(
+	txn, err := r.contract.LilypadEventsUpgradeableTransactor.ReturnLilypadResults(
 		opts,
 		event.OrderRequestor(),
 		big.NewInt(event.OrderNumber()),
@@ -115,7 +115,7 @@ func (r *realContract) Refund(ctx context.Context, event ContractFailedEvent) (C
 		return nil, err
 	}
 
-	txn, err := r.contract.LilypadEventsTransactor.ReturnBacalhauError(
+	txn, err := r.contract.LilypadEventsUpgradeableTransactor.ReturnLilypadError(
 		opts,
 		event.OrderRequestor(),
 		big.NewInt(event.OrderNumber()),
@@ -165,7 +165,7 @@ func (r *realContract) ReadLogs(ctx context.Context, out chan<- ContractSubmitte
 	}
 
 	opts := bind.FilterOpts{Start: uint64(r.maxSeenBlock + 1), Context: ctx}
-	logs, err := r.contract.LilypadEventsFilterer.FilterNewBacalhauJobSubmitted(&opts)
+	logs, err := r.contract.LilypadEventsUpgradeableFilterer.FilterNewLilypadJobSubmitted(&opts)
 	if err != nil {
 		log.Ctx(ctx).Error().Err(err).Send()
 		return
@@ -217,7 +217,7 @@ func NewContract(contractAddr common.Address, privateKey *ecdsa.PrivateKey) (Sma
 		return nil, err
 	}
 
-	contract, err := LilypadEvents.NewLilypadEvents(contractAddr, client)
+	contract, err := LilypadEventsUpgradeable.NewLilypadEventsUpgradeable(contractAddr, client)
 	if err != nil {
 		return nil, err
 	}
