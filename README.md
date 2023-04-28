@@ -95,3 +95,23 @@ Contributions to this repo would also earn you many 5/5 Stable Diffusion Rainbow
 #buildwithbacalhau
 
 ![image](https://user-images.githubusercontent.com/12529822/220625332-b0e6a08a-b77d-41f7-90a8-248852a353c8.png)
+
+
+Upcoming Release Addresses:
+Hyperspace:
+ChainId: 3141
+RPC: https://api.hyperspace.node.glif.io/rpc/v1
+Contract Implementation Address: 0x42be31473913E8932bFAD617C53C318bf36e8ba9
+Contract Proxy Address: 0x489656E4eDDD9c88F5Fe863bDEd9Ed0Dc29B224c 
+
+Calibration Net:
+ChainId: 314159
+RPC: https://api.calibration.node.glif.io/rpc/v0
+Contract Implementation Address: 0x6a46ddE41c3f572A07527149552b4B1875B0361B
+Contract Proxy Address: 0xdC7612fa94F098F1d7BB40E0f4F4db8fF0bC8820
+
+Mainnet:
+ChainId: 314
+RPC: https://api.node.glif.io
+Contract Implementation Address: 0x45A60254785834B02B3F0c9E3136e3dd1afC23f5
+Contract Proxy Address: 0xc18879C0a781DdFa0258302467687413AaD5a4E6
