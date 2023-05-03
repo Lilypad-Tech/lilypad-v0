@@ -1,5 +1,26 @@
 # 🌺🐸 Lilypad
 
+## Breaking Changes 1 May 2023 ##
+
+- Note the contract is now called LilypadEventsUpgradeable.sol
+
+- The function to call from your calling contract has been renamed from runBacalhauJob -> runLilypadJob(fromContractAddress, spec, resultType) PAYABLE
+
+- You need to pay to perform tasks now: currently the pay is ONLY to cover the network gas costs of returning the job to your calling contract. No other fees for running the job are payable. (while we were only on testnet, this was not an issues, however, it is on mainnet :))
+
+The examples are currently in the process of being updated to add the changes :)
+
+
+Contract Addresses: 
+
+- Hyperspace: 0x489656E4eDDD9c88F5Fe863bDEd9Ed0Dc29B224c 
+
+- Calibration Net: 0xdC7612fa94F098F1d7BB40E0f4F4db8fF0bC8820
+
+- FVM Mainnet: 0xc18879C0a781DdFa0258302467687413AaD5a4E6
+
+==============
+
 A simple and lightweight FVM "oracle" using Bacalhau. We're enabling calling Bacalhau jobs from smart contracts!
 
 This project harnesses the power of onchain compute with off-chain computations including traditional Oracle jobs, AI, ML and well any Docker or WASM job you can run on Bacalhau.
