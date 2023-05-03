@@ -2,9 +2,9 @@
 
 ## Breaking Changes 1 May 2023 ##
 
-- Note the events contract is now called LilypadEventsUpgradeable.sol (updated from LilypadEvents.sol)
+- Note the events contract is now called ```LilypadEventsUpgradeable.sol``` (updated from LilypadEvents.sol)
 
-- The function to call from your calling contract has been renamed from runBacalhauJob -> runLilypadJob(fromContractAddress, spec, resultType) PAYABLE
+- The function to call from your calling contract has been renamed from runBacalhauJob -> ```runLilypadJob(fromContractAddress, spec, resultType) PAYABLE```
 
 - You need to pay to perform tasks now: currently the pay is ONLY to cover the network gas costs of returning the job to your calling contract. No other fees for running the job are payable. (while we were only on testnet, this was not an issues, however, it is on mainnet :))
 
