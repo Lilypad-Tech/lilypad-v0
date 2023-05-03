@@ -2,7 +2,7 @@
 
 ## Breaking Changes 1 May 2023 ##
 
-- Note the contract is now called LilypadEventsUpgradeable.sol
+- Note the events contract is now called LilypadEventsUpgradeable.sol (updated from LilypadEvents.sol)
 
 - The function to call from your calling contract has been renamed from runBacalhauJob -> runLilypadJob(fromContractAddress, spec, resultType) PAYABLE
 
