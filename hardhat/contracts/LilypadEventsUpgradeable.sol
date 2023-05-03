@@ -15,10 +15,11 @@ error LilypadEventsUpgradeableError();
 contract LilypadEventsUpgradeable is Initializable, AccessControlUpgradeable, UUPSUpgradeable {
     bool private initialized;
     bytes32 public constant UPGRADER_ROLE = keccak256("UPGRADER_ROLE");
+    
     uint256 public LILYPAD_FEE = 0.03 * 10**18;
     uint256 private escrowAmount = 0;
     uint256 private escrowMinAutoPay  = 5 * 10**18;
-    address private escrowAddress = 0x5617493b265E9d3CC65CE55eAB7798796D9108E4; //unused but leaving for now for memory slot in UUPS
+    address private escrowAddress = 0x5617493b265E9d3CC65CE55eAB7798796D9108E4; 
     uint256[50] private __gap; //for extra memory slots that may be needed in future upgrades.
 
     using Counters for Counters.Counter;
@@ -85,8 +86,10 @@ contract LilypadEventsUpgradeable is Initializable, AccessControlUpgradeable, UU
       escrowAddress = _escrowAddress;
     }
 
-    function withdrawBalanceToEscrowAddress() public onlyRole(UPGRADER_ROLE){
+    function withdrawBalanceToEscrowAddress() public onlyRole(UPGRADER_ROLE) {
+        require(address(this).balance > 0, "No money in contract able to be withdrawn");
         address payable recipient = payable(escrowAddress);
+        //ecrowAmount and contract amount Should be the same (if not should be zero'd anyway);
         escrowAmount = 0;
         uint256 amount = address(this).balance;
         recipient.transfer(amount);
