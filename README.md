@@ -14,24 +14,13 @@ StableDiffusion example has been updated to reflect changes see this contract: h
 
 Or open in remix: https://remix.ethereum.org/bacalhau-project/lilypad/blob/main/examples/contracts/StableDiffusionCallerv2.sol
 
+# Deployed Lilypad Events Contracts:
 
-```
-Contract Addresses: 
-
-- Hyperspace: 0x489656E4eDDD9c88F5Fe863bDEd9Ed0Dc29B224c 
-
-- Calibration Net: 0xdC7612fa94F098F1d7BB40E0f4F4db8fF0bC8820
-
-- FVM Mainnet: 0xc18879C0a781DdFa0258302467687413AaD5a4E6
-```
-
-
-| Chain Name | RPC | ChainID | BlockExplorer | Faucet |
-| --- | --- | --- | --- | --- |
-| Filecoin Calibration Net (**testnet**) | [https://api.calibration.node.glif.io/rpc/v0](https://api.calibration.node.glif.io/rpc/v0) | 314159 | [https://calibration.filscan.io/](https://calibration.filscan.io/), | [https://faucet.calibration.fildev.network/](https://faucet.calibration.fildev.network/) |
-| Filecoin Hyperspace (**testnet**) | [https://api.hyperspace.node.glif.io/rpc/v1](https://api.hyperspace.node.glif.io/rpc/v1), [https://hyperspace.filfox.info/rpc/v1](https://hyperspace.filfox.info/rpc/v1), [https://filecoin-hyperspace.chainstacklabs.com/rpc/v1](https://filecoin-hyperspace.chainstacklabs.com/rpc/v1), [https://rpc.ankr.com/filecoin\_testnet](https://rpc.ankr.com/filecoin_testnet) | 3141 | [https://fvm.starboard.ventures/hyperspace/explorer/tx/](https://fvm.starboard.ventures/hyperspace/explorer/tx/), [https://explorer.glif.io/](https://explorer.glif.io/), | [https://hyperspace.yoga/#faucet](https://hyperspace.yoga/#faucet) |
-| Filecoin Mainnet | [https://api.node.glif.io/rpc/v1](https://api.node.glif.io/rpc/v1), [https://filecoin-mainnet.chainstacklabs.com/rpc/v1](https://filecoin-mainnet.chainstacklabs.com/rpc/v1), [https://rpc.ankr.com/filecoin](https://rpc.ankr.com/filecoin) | 314 | [https://fvm.starboard.ventures/](https://fvm.starboard.ventures/), [https://explorer.glif.io/](https://explorer.glif.io/), [https://beryx.zondax.ch/](https://beryx.zondax.ch/), [https://filfox.io/](https://filfox.io/) |  |
-
+| Chain Name | LilypadEvents Contract Address | RPC | ChainID | BlockExplorer | Faucet |
+| --- | --- | --- | --- | --- | --- |
+| Filecoin Calibration Net (**testnet**) | 0xdC7612fa94F098F1d7BB40E0f4F4db8fF0bC8820 | [https://api.calibration.node.glif.io/rpc/v0](https://api.calibration.node.glif.io/rpc/v0) | 314159 | [https://calibration.filscan.io/](https://calibration.filscan.io/), | [https://faucet.calibration.fildev.network/](https://faucet.calibration.fildev.network/) |
+| Filecoin Hyperspace (**testnet**) | 0x489656E4eDDD9c88F5Fe863bDEd9Ed0Dc29B224c | [https://api.hyperspace.node.glif.io/rpc/v1](https://api.hyperspace.node.glif.io/rpc/v1), [https://hyperspace.filfox.info/rpc/v1](https://hyperspace.filfox.info/rpc/v1), [https://filecoin-hyperspace.chainstacklabs.com/rpc/v1](https://filecoin-hyperspace.chainstacklabs.com/rpc/v1), [https://rpc.ankr.com/filecoin\_testnet](https://rpc.ankr.com/filecoin_testnet) | 3141 | [https://fvm.starboard.ventures/hyperspace/explorer/tx/](https://fvm.starboard.ventures/hyperspace/explorer/tx/), [https://explorer.glif.io/](https://explorer.glif.io/), | [https://hyperspace.yoga/#faucet](https://hyperspace.yoga/#faucet) |
+| Filecoin Mainnet | 0xc18879C0a781DdFa0258302467687413AaD5a4E6 | [https://api.node.glif.io/rpc/v1](https://api.node.glif.io/rpc/v1), [https://filecoin-mainnet.chainstacklabs.com/rpc/v1](https://filecoin-mainnet.chainstacklabs.com/rpc/v1), [https://rpc.ankr.com/filecoin](https://rpc.ankr.com/filecoin) | 314 | [https://fvm.starboard.ventures/](https://fvm.starboard.ventures/), [https://explorer.glif.io/](https://explorer.glif.io/), [https://beryx.zondax.ch/](https://beryx.zondax.ch/), [https://filfox.io/](https://filfox.io/) |  |
 
 ## About Lilypad ##
 
