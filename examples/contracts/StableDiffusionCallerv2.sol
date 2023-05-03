@@ -54,7 +54,7 @@ contract StableDiffusionCallerV2 is LilypadCallerInterface, Ownable {
     string constant specStart = '{'
         '"Engine": "docker",'
         '"Verifier": "noop",'
-        '"Publisher": "estuary",'
+        '"PublisherSpec": {"Type": "estuary"},'
         '"Docker": {'
         '"Image": "ghcr.io/bacalhau-project/examples/stable-diffusion-gpu:0.0.1",'
         '"Entrypoint": ["python", "main.py", "--o", "./outputs", "--p", "';
