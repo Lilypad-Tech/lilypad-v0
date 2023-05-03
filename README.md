@@ -14,7 +14,7 @@ StableDiffusion example has been updated to reflect changes see this contract: h
 
 Or open in remix: https://remix.ethereum.org/bacalhau-project/lilypad/blob/main/examples/contracts/StableDiffusionCallerv2.sol
 
-# Deployed Lilypad Events Contracts:
+## Deployed Lilypad Events Contracts ##
 
 | Chain Name | LilypadEvents Contract Address | RPC | ChainID | BlockExplorer | Faucet |
 | --- | --- | --- | --- | --- | --- |
