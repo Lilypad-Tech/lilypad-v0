@@ -15,13 +15,14 @@ StableDiffusion example has been updated to reflect changes see this contract: h
 Or open in remix: https://remix.ethereum.org/bacalhau-project/lilypad/blob/main/examples/contracts/StableDiffusionCallerv2.sol
 
 
-Contract Addresses: 
+```Contract Addresses: 
 
 - Hyperspace: 0x489656E4eDDD9c88F5Fe863bDEd9Ed0Dc29B224c 
 
 - Calibration Net: 0xdC7612fa94F098F1d7BB40E0f4F4db8fF0bC8820
 
 - FVM Mainnet: 0xc18879C0a781DdFa0258302467687413AaD5a4E6
+```
 
 ## About Lilypad ##
 
