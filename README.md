@@ -8,7 +8,11 @@
 
 - You need to pay to perform tasks now: currently the pay is ONLY to cover the network gas costs of returning the job to your calling contract. No other fees for running the job are payable. (while we were only on testnet, this was not an issues, however, it is on mainnet :))
 
-The examples are currently in the process of being updated to add the changes :)
+- NOTE: Bacalhau also changed how it handles the "Publisher" part of a Spec. -> ```"Publisher": "estuary"``` is now ```"PublisherSpec": {"Type": "estuary"}```
+
+StableDiffusion example has been updated to reflect changes see this contract: https://github.com/bacalhau-project/lilypad/blob/main/examples/contracts/StableDiffusionCallerv2.sol
+
+Or open in remix: https://remix.ethereum.org/bacalhau-project/lilypad/blob/main/examples/contracts/StableDiffusionCallerv2.sol
 
 
 Contract Addresses: 
