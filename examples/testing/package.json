@@ -1,0 +1,41 @@
+// {
+//   "name": "lilypad-project",
+//   "version": "1.0.0",
+//   "description": "Lilypad Project connects smart contracts to verifiable distributed off-chain compute (Bacalhau)",
+//   "files": [
+//     "/contracts/**/*.sol",
+//     "/build/contracts/*.json",
+//     "!/contracts/examples/**/*"
+//   ],
+//   "bin": {
+//     "lilypad-project-contracts-migrate-imports": "scripts/migrate-imports.js"
+//   },
+//   "scripts": {
+//     "test": "hardhat test",
+//     "compile": "hardhat compile",
+//     "coverage": "env COVERAGE=true hardhat coverage",
+//     "gas-report": "env ENABLE_GAS_REPORT=true npm run test"
+//   },
+//   "repository": {
+//     "type": "git",
+//     "url": "https://github.com/bacalhau-project/lilypad/lilypad-project.git"
+//   },
+//   "keywords": [
+//     "lilypad",
+//     "solidity",
+//     "offchain compute",
+//     "bacalhau",
+//     "fvm",
+//     "contracts",
+//     "ethereum",
+//     "smart contracts",
+//     "lilypad bridge"
+//   ],
+//   "author": "Filecoin",
+//   "license": "MIT",
+//   "bugs": {
+//     "url": "https://github.com/bacalhau-project/lilypad/issues"
+//   },
+//   "homepage": "https://github.com/bacalhau-project/lilypad/tree/main#readme",
+//   "devDependencies": {}
+// }
