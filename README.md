@@ -25,6 +25,9 @@ Contract Addresses:
 - FVM Mainnet: 0xc18879C0a781DdFa0258302467687413AaD5a4E6
 ```
 
+|     Network Name      |                                    RPC Endpoint                                     |                                                                                                             Chain Id                                                                                                              |
+    | :-----------: | :-------------------------------------------------------------------------: | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------: |
+
 ## About Lilypad ##
 
 A simple and lightweight FVM "oracle" using Bacalhau. We're enabling calling Bacalhau jobs from smart contracts!
