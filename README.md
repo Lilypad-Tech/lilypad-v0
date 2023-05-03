@@ -15,7 +15,8 @@ StableDiffusion example has been updated to reflect changes see this contract: h
 Or open in remix: https://remix.ethereum.org/bacalhau-project/lilypad/blob/main/examples/contracts/StableDiffusionCallerv2.sol
 
 
-```Contract Addresses: 
+```
+Contract Addresses: 
 
 - Hyperspace: 0x489656E4eDDD9c88F5Fe863bDEd9Ed0Dc29B224c 
 
