@@ -25,11 +25,13 @@ Contract Addresses:
 - FVM Mainnet: 0xc18879C0a781DdFa0258302467687413AaD5a4E6
 ```
 
-    |     Network Name      |                                    RPC                                     |                                                                                                             Chain ID                                                                                                              |
-    | :-----------: | :-------------------------------------------------------------------------: | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------: |
-    |    `_from`    |                                  `address`                                  |                                         The address of the calling contract, to which success or failure will be passed back. You should probably use address(this) from your contract.                                          |
-    |    `_spec`    |                                  `string`                                   |                                                                    A Bacalhau job spec in JSON format. See below for more information on creating a job spec.                                                                    |
-    | `_resultType` | [`LilypadResultType`](./hardhat/contracts/LilypadCallerInterface.sol#L4-L9) | The type of result that you want to be returned. If you specify CID, the result tree will come back as a retrievable IPFS CID. If you specify StdOut, StdErr or ExitCode, those raw values output from the job will be returned. |
+
+| Chain Name | RPC | ChainID | BlockExplorer | Faucet |
+| --- | --- | --- | --- | --- |
+| Filecoin Calibration Net (**testnet**) | [https://api.calibration.node.glif.io/rpc/v0](https://api.calibration.node.glif.io/rpc/v0) | 314159 | [https://calibration.filscan.io/](https://calibration.filscan.io/), | [https://faucet.calibration.fildev.network/](https://faucet.calibration.fildev.network/) |
+| Filecoin Hyperspace (**testnet**) | [https://api.hyperspace.node.glif.io/rpc/v1](https://api.hyperspace.node.glif.io/rpc/v1), [https://hyperspace.filfox.info/rpc/v1](https://hyperspace.filfox.info/rpc/v1), [https://filecoin-hyperspace.chainstacklabs.com/rpc/v1](https://filecoin-hyperspace.chainstacklabs.com/rpc/v1), [https://rpc.ankr.com/filecoin\_testnet](https://rpc.ankr.com/filecoin_testnet) | 3141 | [https://fvm.starboard.ventures/hyperspace/explorer/tx/](https://fvm.starboard.ventures/hyperspace/explorer/tx/), [https://explorer.glif.io/](https://explorer.glif.io/), | [https://hyperspace.yoga/#faucet](https://hyperspace.yoga/#faucet) |
+| Filecoin Mainnet | [https://api.node.glif.io/rpc/v1](https://api.node.glif.io/rpc/v1), [https://filecoin-mainnet.chainstacklabs.com/rpc/v1](https://filecoin-mainnet.chainstacklabs.com/rpc/v1), [https://rpc.ankr.com/filecoin](https://rpc.ankr.com/filecoin) | 314 | [https://fvm.starboard.ventures/](https://fvm.starboard.ventures/), [https://explorer.glif.io/](https://explorer.glif.io/), [https://beryx.zondax.ch/](https://beryx.zondax.ch/), [https://filfox.io/](https://filfox.io/) |  |
+
 
 ## About Lilypad ##
 
