@@ -36,19 +36,12 @@ The work is primarily initially focussed on FEVM contract target.
 
 [![YouTube Video](http://img.youtube.com/vi/9lF7omNEK-c/0.jpg)](https://www.youtube.com/watch?v=9lF7omNEK-c 'Project Lilypad')
 
-### We're live on FVM Hyperspace
-
-Contract Address: `0x75B01cAeFF294f10d21ff3429C683230e3d8C9B6`
-
-See it on Block Explorer [here](https://fvm.starboard.ventures/contracts/0x75B01cAeFF294f10d21ff3429C683230e3d8C9B6)
-
-Open it in Remix [here](https://remix.ethereum.org/bacalhau-project/lilypad/blob/main/hardhat/contracts/LilypadEvents.sol)
 
 See the examples folder for how to use this in your own contracts!
 
 [Read more here](https://bit.ly/project-lilypad)
 
-Get help: [FilecoinProject Slack](https://filecoinproject.slack.com/) #bacalhau or #bacalhau-lilypad channel
+Get help: [FilecoinProject Slack](https://filecoinproject.slack.com/) #bacalhau-lilypad channel
 
 ### How Stuff Works
 
