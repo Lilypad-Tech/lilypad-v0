@@ -114,7 +114,8 @@ Contributions to this repo would also earn you many 5/5 Stable Diffusion Rainbow
 ![image](https://user-images.githubusercontent.com/12529822/220625332-b0e6a08a-b77d-41f7-90a8-248852a353c8.png)
 
 
-Upcoming Release Addresses:
+Current Release Addresses:
+
 Hyperspace:
 ChainId: 3141
 RPC: https://api.hyperspace.node.glif.io/rpc/v1
