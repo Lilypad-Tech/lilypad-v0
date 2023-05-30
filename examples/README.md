@@ -10,7 +10,9 @@ npm install
 
 Use remix or hardhat to deploy the contracts or find them at the following addresses on FEVM Hyperspace testnetwork:
 
-Stable Diffusion: 0x89Bb974a9609EfD2f4d4AaC13b4f0538159EB0e2
+Stable Diffusion: 0x89Bb974a9609EfD2f4d4AaC13b4f0538159EB0e2 and 
+
+StableDiffusionV2 contract deployed on Calibration Net: 0x9e2427A71CC6c74be2AC515e9f5f519D356f6862
 
 See it on Block Explorer [here](https://fvm.starboard.ventures/contracts/0x89Bb974a9609EfD2f4d4AaC13b4f0538159EB0e2)
 
@@ -29,3 +31,6 @@ REPORT_GAS=true npx hardhat test
 npx hardhat node
 npx hardhat run scripts/deploy.ts
 ```
+
+
+
