@@ -1,5 +1,10 @@
 # 🌺🐸 Lilypad
 
+
+## We have docs! ##
+https://lilypad.gitbook.io/lilypad/
+
+
 ## Breaking Changes 1 May 2023 ##
 
 - Note the events contract is now called ```LilypadEventsUpgradeable.sol``` (updated from LilypadEvents.sol)
