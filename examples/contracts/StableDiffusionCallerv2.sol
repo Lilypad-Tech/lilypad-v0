@@ -2,8 +2,8 @@
 pragma solidity >=0.8.4;
 import "hardhat/console.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "lilypad/contracts/LilypadEventsUpgradeable.sol";
-import "lilypad/contracts/LilypadCallerInterface.sol";
+import "https://github.com/bacalhau-project/lilypad/blob/main/hardhat/contracts/LilypadEventsUpgradeable.sol";
+import "https://github.com/bacalhau-project/lilypad/blob/main/hardhat/contracts/LilypadCallerInterface.sol";
 
 /**
     @notice An experimental contract for POC work to call Bacalhau jobs from FVM smart contracts
