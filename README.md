@@ -2,7 +2,10 @@
 
 
 ## We have docs! ##
-https://lilypad.gitbook.io/lilypad/
+
+[docs.lilypadnetwork.org](www.docs.lilypadnetwork.org)
+
+and a blog... [lilypad.tech](www.lilypad.tech)
 
 
 ## Breaking Changes 1 May 2023 ##
