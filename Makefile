@@ -73,7 +73,7 @@ bin/${BASENAME}-%: ${HARDHAT_PACKAGES} $(shell find pkg -name '*.go') main.go | 
 .PHONY: build
 build: ${EXAMPLES_ABIJSONS} ${BINARIES}
 
-NETWORKS ?= mainnet hyperspace calibration
+NETWORKS ?= mainnet calibration mantle-testnet polygon-mumbai sepolia-testnet
 PROPERTIES = WALLET_PRIVATE_KEY DEPLOYED_CONTRACT_ADDRESS RPC_ENDPOINT CHAIN_ID
 ENV_FILES = $(patsubst %,hardhat/%.env,${NETWORKS})
 

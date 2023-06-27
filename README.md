@@ -3,7 +3,7 @@
 
 ## We have docs! ##
 
-[docs.lilypadnetwork.org](www.docs.lilypadnetwork.org)
+[docs.lilypadnetwork.org](https://docs.lilypadnetwork.org/)
 
 and a blog... [lilypad.tech](www.lilypad.tech)
 
